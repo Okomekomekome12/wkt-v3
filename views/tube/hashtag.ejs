@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="format-detection" content="telephone=no">
+  <title><%= query %> - 検索</title>
+
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "YouTube Sans", "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; }
+
+    #topbar {
+      background: #0f0f0f;
+      border-bottom: 1px solid #272727;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      height: 56px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+
+    .logo-wrap { display: flex; align-items: center; gap: 4px; text-decoration: none; color: #fff; margin-right: 10px; }
+    .logo-icon { width: 30px; height: 22px; background: #f00; border-radius: 4px; position: relative; }
+    .logo-icon::after {
+      content: ""; position: absolute; border-left: 7px solid #fff;
+      border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent;
+      top: 6.5px; left: 12.5px;
+    }
+    .logo-text { font-size: 19px; font-weight: bold; letter-spacing: -1px; font-family: "Oswald", sans-serif; }
+
+    .menu-btn {
+      background: none; border: none; cursor: pointer; color: #fff;
+      padding: 8px; border-radius: 50%; display: flex;
+    }
+    .menu-btn:hover { background: #272727; }
+
+    .search-wrap { flex: 1; max-width: 640px; display: flex; align-items: center; margin-left: 20px; }
+    #searchbox {
+      flex: 1; padding: 0 16px; height: 40px;
+      border: 1px solid #303030; border-right: none;
+      border-radius: 40px 0 0 40px;
+      font-size: 16px; background: #121212; color: #fff; outline: none;
+    }
+    #searchbox:focus { border-color: #1a73e8; }
+    .search-btn-wrap {
+      border: 1px solid #303030; border-left: none;
+      border-radius: 0 40px 40px 0;
+      background: #222; width: 64px; height: 40px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .search-btn-wrap:hover { background: #333; }
+    .search-btn-wrap svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .view-toggle { display: flex; background: #272727; border-radius: 20px; padding: 2px; }
+    .toggle-btn {
+      background: none; border: none; width: 36px; height: 32px; border-radius: 18px;
+      cursor: pointer; color: #aaa; display: flex; align-items: center; justify-content: center;
+    }
+    .toggle-btn.active { background: #444; color: #fff; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+
+    .layout { display: flex; padding-top: 56px; }
+    .main { flex: 1; min-width: 0; transition: margin-left 0.2s ease; }
+    .content { max-width: 1284px; margin: 0 auto; padding: 16px 24px; }
+    .result-count { font-size: 14px; color: #aaa; margin-bottom: 16px; }
+
+    .result-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .video-card { display: flex; gap: 16px; text-decoration: none; color: inherit; }
+    .thumb-wrap {
+      position: relative; flex: 0 0 360px; aspect-ratio: 16/9;
+      border-radius: 12px; overflow: hidden; background: #000;
+    }
+    .thumb-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    .duration-badge {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.8); color: #fff; font-size: 12px;
+      font-weight: bold; padding: 2px 4px; border-radius: 4px;
+    }
+    .video-info { flex: 1; min-width: 0; }
+    .video-title {
+      font-size: 19px; font-weight: 500; color: #fff; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .channel-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+    .ch-icon { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; }
+    .ch-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .ch-name, .video-meta { font-size: 13px; color: #aaa; }
+
+    .result-list.grid-view {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px 16px;
+    }
+    .grid-view .video-card { flex-direction: column; }
+    .grid-view .thumb-wrap { flex: none; width: 100%; }
+    .grid-view .video-title { font-size: 16px; margin-top: 8px; }
+    .grid-view .channel-card, .grid-view .playlist-card { grid-column: 1 / -1; flex-direction: row; }
+
+    .channel-card { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid #272727; }
+    .ch-avatar { width: 136px; height: 136px; border-radius: 50%; overflow: hidden; margin: 0 50px; flex-shrink: 0; }
+    .ch-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .ch-sub-btn { background: #fff; color: #000; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; border: none; }
+    .ch-sub-btn.subscribed { background: #272727; color: #fff; border: 1px solid #3f3f3f; }
+
+    .ui-autocomplete {
+      background: #212121 !important; border: none !important;
+      border-radius: 0 0 12px 12px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+      z-index: 10001 !important; padding: 8px 0 !important;
+    }
+    .ui-menu-item-wrapper { color: #eee !important; padding: 10px 20px !important; font-size: 15px !important; border: none !important; }
+    .ui-state-active { background: #3f3f3f !important; margin: 0 !important; border: none !important; }
+    .ui-helper-hidden-accessible { display: none; }
+  </style>
+</head>
+<body>
+
+  <header id="topbar">
+    <div class="header-left">
+      <button class="menu-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M21 6H3V5h18v1zm0 5H3v1h18v-1zm0 6H3v1h18v-1z" fill="white"/></svg>
+      </button>
+      <a href="/wkt" class="logo-wrap">
+        <div class="logo-icon"></div>
+      </a>
+    </div>
+
+    <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+      <input type="text" name="q" id="searchbox" value="<%= query %>" placeholder="検索" autocomplete="off">
+      <button type="submit" class="search-btn-wrap">
+        <svg viewBox="0 0 24 24"><path d="M20.87,20.17l-5.59-5.59C16.35,13.35,17,11.75,17,10c0-3.87-3.13-7-7-7s-7,3.13-7,7s3.13,7,7,7c1.75,0,3.35-0.65,4.58-1.71 l5.59,5.59L20.87,20.17z M10,16c-3.31,0-6-2.69-6-6s2.69-6,6-6s6,2.69,6,6S13.31,16,10,16z"/></svg>
+      </button>
+    </form>
+
+    <div class="nav-right">
+      <div class="view-toggle">
+        <button id="btn-list" class="toggle-btn" onclick="changeView('list')">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+        <button id="btn-grid" class="toggle-btn" onclick="changeView('grid')">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zM13 3h8v8h-8V3zm0 10h8v8h-8v-8z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div id="sidebar">
+      <a href="/wkt" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        ホーム
+      </a>
+      <a href="/wkt/trend" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+        トレンド
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="/wkt/cl/subscriptions" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+        登録チャンネル
+      </a>
+      <a href="/wkt/cl/history" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        履歴
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="/wkt/cl/favorites" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+        お気に入り
+      </a>
+      <a href="/wkt/cl/playlists" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+        プレイリスト
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="/wkt/settings" class="sidebar-item">
+        <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+        設定
+      </a>
+    </div>
+            <main class="main" id="main-content">
+              <div class="content">
+                <div id="resultList" class="result-list">
+                  <% res.forEach((item) => { %>
+                    <a href="/wkt/watch/<%= item.id %>" class="video-card">
+                      <div class="thumb-wrap">
+                        <img loading="lazy" src="/wkt/back/vi/<%= item.id %>/mqdefault.jpg%>" alt="<%= item.title %>">
+                        <span class="duration-badge"><%= item.duration %></span>
+                      </div>
+
+                      <div class="video-info">
+                        <h3 class="video-title"><%= item.title %></h3>
+
+                        <div class="channel-row">
+                          <div class="ch-icon">
+                            <img src="<%= item.author.thumbnail %>" alt="<%= item.author.name %>">
+                          </div>
+                          <span class="ch-name"><%= item.author.name %></span>
+                        </div>
+
+                        <p class="video-meta">
+                          <%= item.view_count %> • <%= item.published %>
+                        </p>
+                      </div>
+                    </a>
+                  <% }); %>
+                </div>
+              </div>
+            </main>
+  <script>
+    function toggleSidebar(forceOpen = null) {
+      const sb = document.getElementById('sidebar');
+      const mc = document.getElementById('main-content');
+
+      if (forceOpen === true) sb.classList.add('open');
+      else if (forceOpen === false) sb.classList.remove('open');
+      else sb.classList.toggle('open');
+
+      const isOpen = sb.classList.contains('open');
+
+      if (window.innerWidth > 1024) {
+        mc.style.marginLeft = isOpen ? '240px' : '0';
+      } else {
+        mc.style.marginLeft = '0';
+      }
+      localStorage.setItem('sidebar_expanded', isOpen);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const savedSidebar = localStorage.getItem('sidebar_expanded');
+      const isLargeScreen = window.innerWidth > 1024;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      if (isPortrait) {
+        toggleSidebar(false);
+      } else if (savedSidebar !== null) {
+        toggleSidebar(savedSidebar === 'true');
+      } else {
+        if (isLargeScreen) {
+          toggleSidebar(true);
+        } else {
+          toggleSidebar(false);
+        }
+      }
+    });
+
+    window.addEventListener('resize', function() {
+      const sb = document.getElementById('sidebar');
+      const mc = document.getElementById('main-content');
+      if (window.innerWidth > 1024 && sb.classList.contains('open')) {
+        mc.style.marginLeft = '240px';
+      } else {
+        mc.style.marginLeft = '0';
+      }
+    });
+
+    function changeView(mode) {
+      const container = document.getElementById('resultList');
+      const btnList = document.getElementById('btn-list');
+      const btnGrid = document.getElementById('btn-grid');
+      if (mode === 'grid') {
+        container.classList.add('grid-view');
+        btnGrid.classList.add('active');
+        btnList.classList.remove('active');
+      } else {
+        container.classList.remove('grid-view');
+        btnList.classList.add('active');
+        btnGrid.classList.remove('active');
+      }
+      localStorage.setItem('search_view_mode', mode);
+    }
+
+    $(function() {
+      const savedMode = localStorage.getItem('search_view_mode') || 'grid';
+      changeView(savedMode);
+
+      $(function () {
+        $('#searchbox').autocomplete({
+          source: function (req, cb) {
+            const term = req.term.trim();
+            if (term.length > 0) { $.ajax({ url: '/wkt/back/suggest', data: { keyword: term }, success: function (d) { cb(d.length > 0 ? d : getHistory()); } }); }
+            else cb(getHistory());
+          },
+          delay: 1, minLength: 0,
+          select: function (e, ui) { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+        });
+        function getHistory() { return JSON.parse(localStorage.getItem('searchHistory') || '[]'); }
+        $('#searchbox').on('focus', function () { $(this).autocomplete('search', this.value || ''); });
+      });
+    });
+
+    function handleSub(btn, id) {
+      btn.classList.toggle('subscribed');
+      btn.textContent = btn.classList.contains('subscribed') ? '登録済み' : '登録';
+    }
+
+    window.addEventListener("load", function() {
+      const query = '<%= query %>';
+      if (query) {
+        updateSearchHistory(query);
+      }
+    });
+
+    const searchBox = document.getElementById('searchbox');
+    const clearBtn = document.getElementById('clearBtn');
+
+    function toggleClearButton() {
+      clearBtn.style.display = searchBox.value ? 'block' : 'none';
+    }
+
+    searchBox.addEventListener('input', toggleClearButton);
+
+    clearBtn.addEventListener('click', () => {
+      searchBox.value = '';
+      searchBox.focus();
+      toggleClearButton();
+    });
+
+    toggleClearButton();
+
+    function updateSearchHistory(query) {
+      let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+      history = history.filter(item => item !== query);
+      history.unshift(query);
+      localStorage.setItem('searchHistory', JSON.stringify(history));
+    }
+  </script>
+</body>
+</html>

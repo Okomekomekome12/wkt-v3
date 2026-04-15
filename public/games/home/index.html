@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gm</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; font-size: 16px; overflow-x: hidden; }
+
+    #topbar {
+      background: #0f0f0f; border-bottom: 1px solid #272727;
+      padding: 0 20px; display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100; height: 58px;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 6px; text-decoration: none; color: #fff; flex-shrink: 0; }
+    .logo-icon { width: 30px; height: 22px; background: #f00; border-radius: 4px; position: relative; }
+    .logo-icon::after { content: ""; position: absolute; border-left: 8px solid #fff; border-top: 5px solid transparent; border-bottom: 5px solid transparent; top: 6px; left: 11px; }
+    .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .topbar-sep { width: 1px; height: 24px; background: #333; flex-shrink: 0; }
+    .topbar-title { font-size: 17px; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 8px; }
+    .topbar-title svg { width: 22px; height: 22px; fill: #fff; flex-shrink: 0; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .home-link {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 20px;
+      background: #272727; color: #fff; text-decoration: none; font-size: 14px;
+      white-space: nowrap;
+    }
+    .home-link:hover { background: #3f3f3f; }
+    .home-link svg { width: 15px; height: 15px; fill: currentColor; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+    .sidebar-section-title { font-size: 14px; font-weight: 500; color: #aaa; padding: 12px 20px 6px; white-space: nowrap; }
+
+    .view-switch { display: flex; background: #1a1a1a; border-radius: 16px; padding: 3px; gap: 2px; }
+    .view-switch-btn { background: none; border: none; width: 34px; height: 30px; border-radius: 14px; cursor: pointer; color: #aaa; display: flex; align-items: center; justify-content: center; }
+    .view-switch-btn.active { background: #272727; color: #fff; }
+    .view-switch-btn svg { width: 17px; height: 17px; fill: currentColor; }
+
+    .content { padding: 24px 20px 60px; max-width: 1200px; margin: 0 auto; }
+
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .section-title { font-size: 1.1em; font-weight: 600; color: #aaa; }
+    .game-count { font-size: 13px; color: #555; }
+
+    #gameList {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .game-card {
+      display: block; text-decoration: none; color: inherit;
+      background: #141414; border-radius: 12px; overflow: hidden;
+      border: 1px solid #222; transition: border-color 0.15s, transform 0.15s;
+    }
+    .game-card:hover { border-color: #444; transform: translateY(-2px); }
+    .game-card:hover .game-title { color: #3ea6ff; }
+    .game-thumb { width: 100%; aspect-ratio: 16/9; overflow: hidden; background: #1a1a1a; }
+    .game-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .game-body { padding: 12px 14px 14px; }
+    .game-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+    .game-desc { font-size: 13px; color: #717171; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    #gameList.list-view { display: flex; flex-direction: column; gap: 2px; }
+    #gameList.list-view .game-card {
+      display: flex; align-items: center; gap: 16px;
+      border-radius: 10px; background: none; border: none;
+      padding: 10px 12px; transform: none;
+    }
+    #gameList.list-view .game-card:hover { background: #1a1a1a; transform: none; }
+    #gameList.list-view .game-thumb { flex-shrink: 0; width: 160px; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; }
+    #gameList.list-view .game-body { padding: 0; flex: 1; min-width: 0; }
+    #gameList.list-view .game-title { font-size: 15px; margin-bottom: 5px; }
+    #gameList.list-view .game-desc { -webkit-line-clamp: 3; }
+
+    .empty { text-align: center; padding: 80px 20px; color: #555; }
+    .empty svg { width: 52px; height: 52px; fill: #333; margin: 0 auto 14px; display: block; }
+    .empty p { font-size: 15px; }
+
+    @media (max-width: 600px) {
+      #gameList { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+      #gameList.list-view .game-thumb { width: 110px; }
+      .content { padding: 16px 12px 40px; }
+      .home-link span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">
+    <svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h18v8zm-8-2h2v-2h2v-2h-2V8h-2v2h-2v2h2z"/></svg>
+    ゲーム
+  </div>
+  <div class="topbar-right">
+    <div class="view-switch">
+      <button class="view-switch-btn active" id="btnGrid" title="グリッド" onclick="setView('grid')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+      </button>
+      <button class="view-switch-btn" id="btnList" title="リスト" onclick="setView('list')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2.5" rx="1"/><rect x="3" y="11" width="18" height="2.5" rx="1"/><rect x="3" y="17" width="18" height="2.5" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+  <div id="sidebar">
+    <a href="/wkt" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      ホーム
+    </a>
+    <a href="/wkt/trend" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      トレンド
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/subscriptions" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+      登録チャンネル
+    </a>
+    <a href="/wkt/cl/history" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      履歴
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/favorites" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+      お気に入り
+    </a>
+    <a href="/wkt/cl/playlists" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      プレイリスト
+    </a>
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section-title">その他のサービス</div>
+    <a href="/gm/home/" class="sidebar-item active">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4m7-2h.01m2.99-2h.01"/></svg></span>
+      ゲーム
+    </a>
+    <a href="https://wakalight.onrender.com/index.html" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
+      プロキシ
+    </a>
+    <a href="/tools/home" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
+      ツール
+    </a>
+
+    <div class="sidebar-divider"></div>
+    <a href="https://wkt-v3.onrender.com/settings" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+      設定
+    </a>
+  </div>
+
+<div class="content">
+  <div class="section-header">
+    <span class="section-title">ゲーム一覧</span>
+    <span class="game-count" id="gameCount"></span>
+  </div>
+  <div id="gameList"></div>
+</div>
+
+<script>
+  function toggleSidebar(forceOpen = null) {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+
+    if (forceOpen === true) sb.classList.add('open');
+    else if (forceOpen === false) sb.classList.remove('open');
+    else sb.classList.toggle('open');
+
+    const isOpen = sb.classList.contains('open');
+
+    if (window.innerWidth > 1024) {
+      mc.style.marginLeft = isOpen ? '240px' : '0';
+    } else {
+      mc.style.marginLeft = '0';
+    }
+    localStorage.setItem('sidebar_expanded', isOpen);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedSidebar = localStorage.getItem('sidebar_expanded');
+    const isLargeScreen = window.innerWidth > 1024;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+      toggleSidebar(false);
+    } else if (savedSidebar !== null) {
+      toggleSidebar(savedSidebar === 'true');
+    } else {
+      if (isLargeScreen) {
+        toggleSidebar(true);
+      } else {
+        toggleSidebar(false);
+      }
+    }
+  });
+  
+  const GAMES = [
+    {
+      thumbnail: '/api/image/gm/git?path=aooni.jpeg',
+      title: '青鬼 2016',
+      desc: '青鬼。ホラーゲーム',
+      url: '/gm/aooni/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=netabare.jpeg',
+      title: 'ネタバレが激しすぎるRPG',
+      desc: '1時期話題だった例のゲーム',
+      url: '/gm/netabare/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=paperio.jpeg',
+      title: 'paper.io',
+      desc: '陣地を広げるゲーム。',
+      url: '/gm/paperio/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=kankin.png',
+      title: '愛の監禁ごはんはXXXチャーハン',
+      desc: '脱出ゲームかな。',
+      url: '/gm/kankin/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=kawaiihakowaseru.jpeg',
+      title: 'かわいいは壊せる',
+      desc: 'ようじょを1週間かけて『なでなで』したり、 しなかったりするタイプのKENZENなゲーム',
+      url: '/gm/kawaiihakowaseru/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=kinokonun.jpeg',
+      title: 'きのこぬん',
+      desc: 'きのことぬんちゃんの脱出ゲーム。ホラー注意',
+      url: '/gm/kinokonun/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=menhera.jpeg',
+      title: 'メンヘラちゃん家からの脱出',
+      desc: '脱出ゲームかな。',
+      url: '/gm/menhera/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=snow.jpeg',
+      title: 'snowball.io',
+      desc: '雪玉をぶつけ合うバトロワゲーム',
+      url: '/gm/snow/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=stickman.jpeg',
+      title: 'stickman.io',
+      desc: '爽快なアクションゲーム',
+      url: '/gm/stickman/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=tsutsuji.jpeg',
+      title: 'photo',
+      desc: 'かわいい女の子[要出典]とプールで遊ぶゲームだよ。',
+      url: '/gm/tsutsuji/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=aiothello.jpeg',
+      title: 'オセロ',
+      desc: 'つよつよAIとバトれる',
+      url: '/gm/aiothello/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=shesee.jpeg',
+      title: 'SheSeeCrisis',
+      desc: 'おしっこ我慢RPG。ヘッドホンが好きそう',
+      url: '/gm/shesee/'
+    },
+    {
+      thumbnail: '/api/image/gm/git?path=sentakusi.jpeg',
+      title: '勇者の選択肢がおかしい',
+      desc: 'RPGだよ',
+      url: '/gm/sentakusi/'
+    },
+  ];
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function render() {
+    const list = document.getElementById('gameList');
+    document.getElementById('gameCount').textContent = GAMES.length + '本';
+
+    if (!GAMES.length) {
+      list.innerHTML = `
+        <div class="empty">
+          <svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h18v8zm-8-2h2v-2h2v-2h-2V8h-2v2h-2v2h2z"/></svg>
+          <p>ゲームはまだありません</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = GAMES.map(g => `
+      <a href="${esc(g.url || '#')}" class="game-card">
+        <div class="game-thumb">
+          <img loading="lazy" src="${esc(g.thumbnail)}" alt="${esc(g.title)}">
+        </div>
+        <div class="game-body">
+          <div class="game-title">${esc(g.title)}</div>
+          <div class="game-desc">${esc(g.desc)}</div>
+        </div>
+      </a>`).join('');
+  }
+
+  function setView(v) {
+    document.getElementById('gameList').classList.toggle('list-view', v === 'list');
+    document.getElementById('btnGrid').classList.toggle('active', v === 'grid');
+    document.getElementById('btnList').classList.toggle('active', v === 'list');
+  }
+
+  render();
+</script>
+</body>
+</html>

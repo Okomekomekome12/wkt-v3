@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登録チャンネル</title>
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; font-size: 16px; }
+
+    #topbar { background:#0f0f0f; border-bottom:1px solid #272727; padding:0 16px; display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:1000; height:58px; }
+    .logo-wrap { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; flex-shrink:0; }
+    .logo-icon { width:30px; height:22px; background:#f00; border-radius:4px; position:relative; }
+    .logo-icon::after { content:""; position:absolute; border-left:8px solid #fff; border-top:5px solid transparent; border-bottom:5px solid transparent; top:6px; left:11px; }
+    .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .search-wrap { flex:1; max-width:520px; display:flex; align-items:center; margin:0 6px; }
+    #searchbox { flex:1; padding:0 16px; height:40px; border:1px solid #303030; border-right:none; border-radius:40px 0 0 40px; font-size:16px; background:#121212; color:#fff; outline:none; }
+    #searchbox:focus { border-color:#1a73e8; }
+    .search-submit { border:1px solid #303030; border-left:none; border-radius:0 40px 40px 0; background:#222; width:54px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .search-submit:hover { background:#333; }
+    .search-submit svg { width:20px; height:20px; fill:#fff; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+
+    .page-wrap { padding-top:58px; min-height:100vh; }
+    #main-content { margin-left:0; transition:margin-left 0.2s ease; padding:20px 20px 60px; }
+
+    .page-title { font-size:1.4em; font-weight:700; display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .page-title svg { width:24px; height:24px; fill:#fff; flex-shrink:0; }
+
+    .channel-strip-wrap { position:relative; margin-bottom:20px; }
+    .channel-strip {
+      display:flex; gap:10px; overflow-x:auto; padding:10px 4px 12px;
+      scrollbar-width:thin; scrollbar-color:#333 transparent;
+    }
+    .channel-strip::-webkit-scrollbar { height:4px; }
+    .channel-strip::-webkit-scrollbar-track { background:transparent; }
+    .channel-strip::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
+
+    .ch-strip-item {
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      flex-shrink:0; width:88px;
+    }
+    .ch-strip-avatar-wrap { position:relative; }
+    .ch-strip-avatar {
+      width:56px; height:56px; border-radius:50%; overflow:hidden;
+      background:#2a2a2a; display:block; flex-shrink:0;
+      border:2px solid transparent; transition:border-color 0.15s;
+    }
+    .ch-strip-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .ch-strip-avatar.active-filter { border-color:#1a73e8; }
+    .ch-strip-name {
+      font-size:12px; color:#aaa; text-align:center;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:80px;
+    }
+    .ch-strip-filter {
+      font-size:11px; padding:3px 8px; border-radius:10px; border:none;
+      background:#272727; color:#aaa; cursor:pointer; white-space:nowrap;
+    }
+    .ch-strip-filter:hover, .ch-strip-filter.active { background:#1a73e8; color:#fff; }
+
+    .filter-badge {
+      display:none; align-items:center; gap:8px;
+      font-size:13px; color:#3ea6ff;
+      background:#0d1f33; border:1px solid #1a73e8;
+      border-radius:20px; padding:5px 14px; margin-bottom:14px;
+    }
+    .filter-badge.show { display:flex; }
+    .filter-badge button { background:none; border:none; color:#3ea6ff; cursor:pointer; font-size:16px; line-height:1; }
+
+    #videoFeed {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+      gap:20px;
+    }
+
+    .video-card { text-decoration:none; color:inherit; display:block; }
+    .video-card:hover .video-title { color:#3ea6ff; }
+    .thumb-wrap { width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#1a1a1a; position:relative; }
+    .thumb-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+    .video-duration { position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,.85); color:#fff; font-size:12px; font-weight:700; padding:2px 5px; border-radius:3px; }
+    .video-info { padding:10px 2px 0; }
+    .channel-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .ch-icon { width:22px; height:22px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#333; }
+    .ch-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+    .video-ch-name { font-size:13px; color:#aaa; text-decoration:none; }
+    .video-ch-name:hover { color:#fff; }
+    .video-title { font-size:15px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+    .video-meta { font-size:13px; color:#717171; }
+
+    .skeleton-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; }
+    .skeleton-thumb { width:100%; aspect-ratio:16/9; background:#1a1a1a; border-radius:10px; animation:shimmer 1.4s infinite; }
+    .skeleton-line { height:14px; background:#1a1a1a; border-radius:6px; margin-top:10px; animation:shimmer 1.4s infinite; }
+    .skeleton-line.short { width:55%; }
+    @keyframes shimmer { 0%,100%{opacity:.4} 50%{opacity:.9} }
+
+    .empty-state { text-align:center; padding:60px 20px; color:#555; }
+    .empty-state svg { width:52px; height:52px; fill:#333; margin:0 auto 14px; display:block; }
+    .empty-state p { font-size:15px; color:#666; margin-bottom:6px; }
+    .empty-state small { font-size:13px; color:#444; }
+    .empty-state a { color:#3ea6ff; text-decoration:none; }
+
+    .ui-autocomplete { background:#212121 !important; border:none !important; border-radius:0 0 12px 12px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; z-index:10001 !important; padding:8px 0 !important; }
+    .ui-menu-item-wrapper { color:#eee !important; padding:11px 18px !important; font-size:15px !important; border:none !important; }
+    .ui-state-active { background:#3f3f3f !important; margin:0 !important; border:none !important; }
+    .ui-helper-hidden-accessible { display:none; }
+
+    @media (max-width:600px) {
+      #videoFeed, .skeleton-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+      #main-content { padding:14px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/wkt" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+    <input type="text" name="q" id="searchbox" placeholder="検索" autocomplete="off">
+    <button type="submit" class="search-submit">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+</header>
+
+  <div id="sidebar">
+    <a href="/wkt" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      ホーム
+    </a>
+    <a href="/wkt/trend" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      トレンド
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/subscriptions" class="sidebar-item active">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+      登録チャンネル
+    </a>
+    <a href="/wkt/cl/history" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      履歴
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/favorites" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+      お気に入り
+    </a>
+    <a href="/wkt/cl/playlists" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      プレイリスト
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/settings" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+      設定
+    </a>
+  </div>
+
+<div class="page-wrap">
+  <div id="main-content">
+
+    <div class="page-title">
+      <svg viewBox="0 0 24 24"><path d="M10 18v-2h4v2h-4zm-4-4v-2h12v2H6zm-2-4V8h16v2H4z"/></svg>
+      登録チャンネル
+    </div>
+
+    <div class="channel-strip-wrap">
+      <div class="channel-strip" id="channelStrip">
+      </div>
+    </div>
+
+    <div class="filter-badge" id="filterBadge">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+      <span id="filterLabel"></span>
+      <button onclick="clearFilter()" title="絞り込み解除">×</button>
+    </div>
+
+    <div id="videoFeed"></div>
+
+  </div>
+</div>
+
+<script>
+  function toggleSidebar(forceOpen = null) {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+
+    if (forceOpen === true) sb.classList.add('open');
+    else if (forceOpen === false) sb.classList.remove('open');
+    else sb.classList.toggle('open');
+
+    const isOpen = sb.classList.contains('open');
+
+    if (window.innerWidth > 1024) {
+      mc.style.marginLeft = isOpen ? '240px' : '0';
+    } else {
+      mc.style.marginLeft = '0';
+    }
+    localStorage.setItem('sidebar_expanded', isOpen);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedSidebar = localStorage.getItem('sidebar_expanded');
+    const isLargeScreen = window.innerWidth > 1024;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+      toggleSidebar(false);
+    } else if (savedSidebar !== null) {
+      toggleSidebar(savedSidebar === 'true');
+    } else {
+      if (isLargeScreen) {
+        toggleSidebar(true);
+      } else {
+        toggleSidebar(false);
+      }
+    }
+  });
+
+
+  let allVideos = [];
+  let activeFilter = null;
+
+  function getSubs() {
+    try { return JSON.parse(localStorage.getItem('subscriptions') || '[]'); }
+    catch(e) { return []; }
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60)   return 'たった今';
+      if (diff < 3600) return Math.floor(diff / 60) + '分前';
+      if (diff < 86400) return Math.floor(diff / 3600) + '時間前';
+      if (diff < 86400 * 7) return Math.floor(diff / 86400) + '日前';
+      if (diff < 86400 * 30) return Math.floor(diff / 86400 / 7) + '週間前';
+      if (diff < 86400 * 365) return Math.floor(diff / 86400 / 30) + 'ヶ月前';
+      return Math.floor(diff / 86400 / 365) + '年前';
+    } catch(e) { return iso; }
+  }
+  function renderStrip(subs) {
+    const strip = document.getElementById('channelStrip');
+    if (!subs.length) {
+      strip.innerHTML = '<span style="color:#555;font-size:14px;padding:8px 4px">登録チャンネルがありません</span>';
+      return;
+    }
+    strip.innerHTML = subs.map(s => `
+      <div class="ch-strip-item">
+        <div class="ch-strip-avatar-wrap">
+          <a href="/wkt/c/${esc(s.id)}" class="ch-strip-avatar" id="avatar_${esc(s.id)}">
+            ${s.icon ? `<img loading="lazy" src="${esc(s.icon)}" alt="${esc(s.name)}">` : ''}
+          </a>
+        </div>
+        <div class="ch-strip-name" title="${esc(s.name)}">${esc(s.name)}</div>
+        <button class="ch-strip-filter" id="filter_${esc(s.id)}"
+          onclick="applyFilter('${esc(s.id)}', '${esc(s.name)}')">絞り込む</button>
+      </div>`).join('');
+  }
+
+  function showSkeleton() {
+    document.getElementById('videoFeed').innerHTML = `
+      <div class="skeleton-grid">
+        ${Array(12).fill(0).map(() => `
+          <div>
+            <div class="skeleton-thumb"></div>
+            <div class="skeleton-line" style="width:85%"></div>
+            <div class="skeleton-line short"></div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function showEmpty(msg, sub) {
+    document.getElementById('videoFeed').innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M10 18v-2h4v2h-4zm-4-4v-2h12v2H6zm-2-4V8h16v2H4z"/></svg>
+        <p>${msg}</p>
+        ${sub ? `<small>${sub}</small>` : ''}
+      </div>`;
+  }
+
+  function videoCardHtml(v) {
+    const thumb = v.thumbnail || `/wkt/back/vi/${esc(v.id)}/hqdefault.jpg`;
+    const chIcon = v.author?.thumbnail
+      ? `<img loading="lazy" src="${esc(v.author.thumbnail)}" alt="">`
+      : '';
+    const chHref = v.author?.id ? `/wkt/c/${esc(v.author.id)}` : '#';
+    const dateStr = formatDate(v.published);
+    const meta = [v.view_count, v.published].filter(Boolean).join(' · ');
+    const dur = (v.duration && v.duration !== '0:00')
+      ? `<span class="video-duration">${esc(v.duration)}</span>` : '';
+
+    return `
+      <a href="/wkt/watch/${esc(v.id)}" class="video-card">
+        <div class="thumb-wrap">
+          <img loading="lazy" src="${esc(thumb)}" alt="${esc(v.title)}">
+          ${dur}
+        </div>
+        <div class="video-info">
+          <div class="channel-row">
+            <div class="ch-icon">${chIcon}</div>
+            <a href="${chHref}" class="video-ch-name" onclick="event.stopPropagation()">${esc(v.author?.name || '')}</a>
+          </div>
+          <div class="video-title">${esc(v.title || '')}</div>
+          ${meta ? `<div class="video-meta">${esc(meta)}</div>` : ''}
+        </div>
+      </a>`;
+  }
+
+  function renderFeed(videos) {
+    const el = document.getElementById('videoFeed');
+    if (!videos.length) {
+      showEmpty('動画が見つかりませんでした', '');
+      return;
+    }
+    el.innerHTML = videos.map(videoCardHtml).join('');
+  }
+
+  function applyFilter(channelId, channelName) {
+    if (activeFilter === channelId) { clearFilter(); return; }
+    activeFilter = channelId;
+
+    document.querySelectorAll('.ch-strip-filter').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ch-strip-avatar').forEach(a => a.classList.remove('active-filter'));
+    document.getElementById('filter_' + channelId)?.classList.add('active');
+    document.getElementById('avatar_' + channelId)?.classList.add('active-filter');
+
+    document.getElementById('filterLabel').textContent = channelName + ' の動画';
+    document.getElementById('filterBadge').classList.add('show');
+
+    renderFeed(allVideos.filter(v => v.author?.id === channelId));
+  }
+
+  function clearFilter() {
+    activeFilter = null;
+    document.querySelectorAll('.ch-strip-filter').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ch-strip-avatar').forEach(a => a.classList.remove('active-filter'));
+    document.getElementById('filterBadge').classList.remove('show');
+    renderFeed(allVideos);
+  }
+
+  async function fetchFeeds(subs) {
+    showSkeleton();
+
+    const parseRelativeDate = (text) => {
+      if (!text) return 9999999999;
+      const str = String(text);
+      if (str.includes('ライブ') || str.includes('中')) return 0;
+      const match = str.match(/\d+/);
+      const num = match ? parseInt(match[0]) : 0;
+      if (str.includes('秒')) return num;
+      if (str.includes('分')) return num * 60;
+      if (str.includes('時間')) return num * 3600;
+      if (str.includes('日')) return num * 86400;
+      if (str.includes('週')) return num * 604800;
+      if (str.includes('月')) return num * 2592000;
+      if (str.includes('年')) return num * 31536000;
+      return 9999999999;
+    };
+
+    const results = await Promise.all(
+      subs.map(s =>
+        fetch(`/api/yt/channelfeed?id=${encodeURIComponent(s.id)}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+
+    let combinedVideos = [];
+    results.forEach((json, index) => {
+      if (json && json.status === 'success' && Array.isArray(json.data)) {
+        const s = subs[index];
+        const mapped = json.data.map(v => ({
+          ...v,
+          author: {
+            name: v.author?.name || s.name,
+            id: v.author?.id || s.id,
+            thumbnail: v.author?.thumbnail || s.icon || null,
+          }
+        }));
+        combinedVideos = combinedVideos.concat(mapped);
+      }
+    });
+
+    const seen = new Set();
+    const uniqueVideos = combinedVideos.filter(v => {
+      if (!v.id || seen.has(v.id)) return false;
+      seen.add(v.id);
+      return true;
+    });
+
+    allVideos = uniqueVideos.sort((a, b) => {
+      const scoreA = parseRelativeDate(a.published);
+      const scoreB = parseRelativeDate(b.published);
+      return scoreA - scoreB;
+    });
+
+    renderFeed(allVideos);
+  }
+
+  $(function () {
+    $('#searchbox').autocomplete({
+      source: function (req, cb) {
+        const term = req.term.trim();
+        if (term.length > 0) {
+          $.ajax({ url: '/wkt/back/suggest', data: { keyword: term },
+            success: function (d) {
+              const h = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+              cb(d.length > 0 ? d : h);
+            }
+          });
+        } else {
+          cb(JSON.parse(localStorage.getItem('searchHistory') || '[]'));
+        }
+      },
+      delay: 1, minLength: 0,
+      select: function (e, ui) { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+    });
+    $('#searchbox').on('focus', function () { $(this).autocomplete('search', this.value || ''); });
+  });
+
+  (function init() {
+    const subs = getSubs();
+    renderStrip(subs);
+    if (!subs.length) {
+      showEmpty(
+        '登録チャンネルがありません',
+        '動画やチャンネルページの「登録」ボタンから登録できます'
+      );
+      return;
+    }
+    fetchFeeds(subs);
+  })();
+</script>
+</body>
+</html>

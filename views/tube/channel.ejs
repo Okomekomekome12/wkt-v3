@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="format-detection" content="telephone=no">
+  <title><%- channel.metadata.title || "チャンネル" %></title>
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; font-size: 16px; }
+
+    #topbar { background:#0f0f0f; border-bottom:1px solid #272727; padding:0 16px; display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:1000; height:58px; }
+    .logo-wrap { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; flex-shrink:0; }
+    .logo-icon { width:30px; height:22px; background:#f00; border-radius:4px; position:relative; }
+    .logo-icon::after { content:""; position:absolute; border-left:8px solid #fff; border-top:5px solid transparent; border-bottom:5px solid transparent; top:6px; left:11px; }
+    .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .search-wrap { flex:1; max-width:520px; display:flex; align-items:center; margin:0 6px; }
+    #searchbox { flex:1; padding:0 16px; height:40px; border:1px solid #303030; border-right:none; border-radius:40px 0 0 40px; font-size:16px; background:#121212; color:#fff; outline:none; }
+    #searchbox:focus { border-color:#1a73e8; }
+    .search-submit { border:1px solid #303030; border-left:none; border-radius:0 40px 40px 0; background:#222; width:54px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .search-submit:hover { background:#333; }
+    .search-submit svg { width:20px; height:20px; fill:#fff; }
+    .topbar-right { margin-left:auto; display:flex; align-items:center; gap:2px; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+    .page-wrap { padding-top:58px; min-height:100vh; transition:margin-left 0.2s ease; }
+    #main-content { margin-left:0; transition:margin-left 0.2s ease; }
+
+    .channel-banner { width:100%; aspect-ratio:32/9; overflow:hidden; background:#1a1a1a; max-height:280px; }
+    .channel-banner img { width:100%; height:100%; object-fit:cover; display:block; }
+    .banner-placeholder { width:100%; height:100%; background:linear-gradient(135deg,#1a1a2e,#16213e); }
+
+    .channel-header { padding:20px 24px 0; max-width:1400px; margin:0 auto; }
+    .channel-header-inner { display:flex; align-items:flex-start; gap:20px; padding-bottom:20px; border-bottom:1px solid #272727; }
+    .channel-avatar { width:80px; height:80px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#333; }
+    .channel-avatar img { width:100%; height:100%; object-fit:cover; }
+    .channel-meta { flex:1; min-width:0; }
+    .channel-name { font-size:1.6em; font-weight:700; margin-bottom:4px; }
+    .channel-sub-info { font-size:14px; color:#aaa; margin-bottom:6px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .channel-sub-info span + span::before { content:"·"; margin-right:6px; }
+    .channel-desc { font-size:14px; color:#ccc; line-height:1.6; max-width:720px; margin-top:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer; }
+    .channel-desc.expanded { -webkit-line-clamp:unset; }
+    .channel-desc-toggle { font-size:13px; color:#3ea6ff; cursor:pointer; margin-top:4px; background:none; border:none; padding:0; }
+    .channel-desc-toggle:hover { text-decoration:underline; }
+    .channel-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+    .sub-btn { padding:10px 20px; border-radius:20px; border:none; background:#fff; color:#0f0f0f; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .sub-btn:hover { background:#ddd; }
+    .sub-btn.subscribed { background:#272727; color:#aaa; border:1px solid #3f3f3f; }
+    .sub-btn.subscribed:hover { background:#3f3f3f; }
+
+    .tab-bar { max-width:1400px; margin:0 auto; padding:0 24px; border-bottom:1px solid #272727; display:flex; gap:0; overflow-x:auto; scrollbar-width:none; }
+    .tab-bar::-webkit-scrollbar { display:none; }
+    .tab-btn { padding:14px 20px; font-size:15px; font-weight:500; color:#aaa; background:none; border:none; cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-1px; transition:color 0.15s; }
+    .tab-btn:hover { color:#fff; background:#ffffff10; }
+    .tab-btn.active { color:#fff; border-bottom-color:#fff; }
+
+    .content-area { max-width:1400px; margin:0 auto; padding:20px 24px 40px; }
+
+    .video-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:20px; }
+    .video-card { text-decoration:none; color:inherit; display:block; }
+    .video-card:hover .vc-title { color:#3ea6ff; }
+    .vc-thumb { width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#1a1a1a; position:relative; }
+    .vc-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .vc-duration { position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,.85); color:#fff; font-size:12px; font-weight:700; padding:2px 5px; border-radius:3px; }
+    .vc-info { padding:10px 2px 0; }
+    .vc-title { font-size:15px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+    .vc-meta { font-size:13px; color:#717171; }
+
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .shelf-section { margin-bottom:32px; }
+    .shelf-title { font-size:17px; font-weight:600; margin-bottom:14px; }
+
+    .pl-card { display:flex; gap:12px; text-decoration:none; color:inherit; padding:8px 0; border-bottom:1px solid #1f1f1f; }
+    .pl-card:hover .pl-title { color:#3ea6ff; }
+    .pl-thumb { flex-shrink:0; width:160px; aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#1a1a1a; position:relative; }
+    .pl-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pl-badge { position:absolute; right:0; top:0; bottom:0; width:40%; background:rgba(0,0,0,.7); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#fff; font-size:12px; font-weight:700; }
+    .pl-badge svg { width:14px; height:14px; fill:#fff; }
+    .pl-info { flex:1; min-width:0; }
+    .pl-title { font-size:15px; font-weight:500; margin-bottom:4px; }
+    .pl-meta { font-size:13px; color:#aaa; }
+
+    .ch-card { display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit; padding:12px 0; border-bottom:1px solid #1f1f1f; }
+    .ch-card:hover .ch-card-name { color:#3ea6ff; }
+    .ch-card-avatar { width:56px; height:56px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#333; }
+    .ch-card-avatar img { width:100%; height:100%; object-fit:cover; }
+    .ch-card-name { font-size:15px; font-weight:600; margin-bottom:3px; }
+    .ch-card-meta { font-size:13px; color:#aaa; }
+
+    .empty-state { text-align:center; padding:60px 20px; color:#aaa; font-size:15px; }
+
+    .toast { position:fixed; top:70px; right:16px; background:#212121; border:1px solid #3f3f3f; border-radius:10px; padding:14px 18px; font-size:15px; color:#fff; z-index:9999; display:flex; align-items:center; gap:12px; box-shadow:0 4px 20px rgba(0,0,0,.5); max-width:360px; transition:opacity .3s,transform .3s; }
+    .toast-close { background:none; border:none; color:#aaa; cursor:pointer; font-size:20px; flex-shrink:0; }
+
+    .ui-autocomplete { background:#212121 !important; border:none !important; border-radius:0 0 12px 12px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; z-index:10001 !important; padding:8px 0 !important; }
+    .ui-menu-item-wrapper { color:#eee !important; padding:11px 18px !important; font-size:15px !important; border:none !important; }
+    .ui-state-active { background:#3f3f3f !important; margin:0 !important; border:none !important; }
+    .ui-helper-hidden-accessible { display:none; }
+
+    @media (max-width:700px) {
+      .channel-header-inner { flex-direction:column; align-items:flex-start; }
+      .channel-avatar { width:64px; height:64px; }
+      .channel-name { font-size:1.3em; }
+      .video-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+      .tab-btn { padding:12px 14px; font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/wkt" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+    <input type="text" name="q" id="searchbox" placeholder="検索" autocomplete="off">
+    <button type="submit" class="search-submit">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+  <div class="topbar-right"></div>
+</header>
+
+  <div id="sidebar">
+    <a href="/wkt" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      ホーム
+    </a>
+    <a href="/wkt/trend" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      トレンド
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/subscriptions" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+      登録チャンネル
+    </a>
+    <a href="/wkt/cl/history" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      履歴
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/favorites" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+      お気に入り
+    </a>
+    <a href="/wkt/cl/playlists" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      プレイリスト
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/settings" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+      設定
+    </a>
+  </div>
+
+<div class="page-wrap">
+  <div id="main-content">
+    <div class="channel-banner">
+      <% const bannerUrl = channel.header?.content?.banner?.image?.[0]?.url; %>
+      <% if (bannerUrl) { %>
+        <img src="<%= bannerUrl %>" alt="バナー">
+      <% } else { %>
+        <div class="banner-placeholder"></div>
+      <% } %>
+    </div>
+
+    <div class="channel-header">
+      <div class="channel-header-inner">
+        <div class="channel-avatar">
+          <% if (channel.metadata?.avatar?.[0]?.url) { %>
+            <img src="<%= channel.metadata.avatar[0].url %>" alt="<%= channel.metadata.title %>">
+          <% } %>
+        </div>
+        <div class="channel-meta">
+          <div class="channel-name"><%- channel.metadata.title %></div>
+          <div class="channel-sub-info">
+            <% try { %><span><%- channel.header?.content?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text || '' %></span><% } catch(e) {} %>
+            <% try { %><span><%- channel.header?.content?.metadata?.metadata_rows?.[1]?.metadata_parts?.[0]?.text || '' %></span><% } catch(e) {} %>
+            <% try { %><span><%- channel.header?.content?.metadata?.metadata_rows?.[1]?.metadata_parts?.[1]?.text || '' %></span><% } catch(e) {} %>
+          </div>
+          <% if (channel.metadata?.description) { %>
+            <div class="channel-desc" id="chDesc"><%- channel.metadata.description.replace(/\n/g,'<br>') %></div>
+            <button class="channel-desc-toggle" id="chDescToggle" onclick="toggleChDesc()">続きを読む</button>
+          <% } %>
+        </div>
+        <div class="channel-actions">
+          <button class="sub-btn" id="subBtn"
+            data-id="<%= channel.metadata?.external_id %>"
+            data-name="<%= channel.metadata?.title %>"
+            data-icon="<%= channel.metadata?.avatar?.[0]?.url %>"
+            onclick="toggleSubscribe(this)">
+            登録
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <%
+      const hasShelves = channel.shelves && channel.shelves.length > 0;
+      const hasRecent  = recentVideos && recentVideos.length > 0;
+    %>
+    <div class="tab-bar" id="tabBar">
+      <% if (hasRecent) { %>
+        <button class="tab-btn active" onclick="switchTab(0)" id="tab-0">最近の動画</button>
+      <% } %>
+      <% if (hasShelves) { %>
+        <% channel.shelves.forEach((shelf, i) => { %>
+          <button class="tab-btn <%= (!hasRecent && i === 0) ? 'active' : '' %>"
+            onclick="switchTab(<%= hasRecent ? i + 1 : i %>)"
+            id="tab-<%= hasRecent ? i + 1 : i %>">
+            <%= shelf.title?.text || ('タブ' + (i+1)) %>
+          </button>
+        <% }); %>
+      <% } %>
+    </div>
+
+        <div class="content-area">
+          <% if (hasRecent) { %>
+          <div class="tab-panel active" id="panel-0">
+            <div class="video-grid">
+              <% /* .items を取って .forEach に変更 */ %>
+              <% recentVideos.forEach(video => { %>
+                <a href="/wkt/watch/<%= video.id %>" class="video-card">
+                  <div class="vc-thumb">
+                    <img loading="lazy" src="/wkt/back/vi/<%= video.id %>/mqdefault.jpg" alt="<%= video.title %>">
+                    <% if (video.duration && video.duration !== "0:00") { %>
+                      <span class="vc-duration"><%= video.duration %></span>
+                    <% } %>
+                  </div>
+                  <div class="vc-info">
+                    <div class="vc-title"><%= video.title %></div>
+                    <div class="vc-meta"><%= video.view_count %></div>
+                  </div>
+                </a>
+              <% }); %>
+            </div>
+          </div>
+          <% } %>
+
+      <% if (hasShelves) { %>
+        <% channel.shelves.forEach((shelf, si) => { %>
+          <%
+            const panelIdx = hasRecent ? si + 1 : si;
+            const isFirst  = !hasRecent && si === 0;
+          %>
+          <div class="tab-panel <%= isFirst ? 'active' : '' %>" id="panel-<%= panelIdx %>">
+            <% if (shelf.content?.items?.length) { %>
+              <div class="video-grid">
+                <% shelf.content.items.forEach(item => { %>
+
+                  <% if (item.type && item.type.endsWith('Video')) { %>
+                    <a href="/wkt/watch/<%= item.id %>" class="video-card">
+                      <div class="vc-thumb">
+                        <img loading="lazy" src="/wkt/back/vi/<%= item.id %>/mqdefault.jpg" alt="<%= item.title %>">
+                        <% if (item.duration) { %><span class="vc-duration"><%= item.duration %></span><% } %>
+                      </div>
+                      <div class="vc-info">
+                        <div class="vc-title"><%= item.title %></div>
+                        <div class="vc-meta">
+                          <%= item.short_view_count || item.views || '' %>
+                          <% if (item.published) { %> · <%= item.published %><% } %>
+                        </div>
+                      </div>
+                    </a>
+
+                  <% } else if (item.type && item.type.endsWith('Playlist')) { %>
+                    <a href="/wkt/p/<%= item.id %>" class="video-card">
+                      <div class="vc-thumb">
+                        <img loading="lazy"
+                          src="/wkt/back/vi/<%= item?.endpoint?.payload?.videoId || item.first_videos?.[0]?.id %>/mqdefault.jpg"
+                          alt="<%= item.title?.text %>">
+                        <div style="position:absolute;right:0;top:0;bottom:0;width:36%;background:rgba(0,0,0,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#fff;font-size:12px;font-weight:700">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+                          <%= item.video_count?.text %>
+                        </div>
+                      </div>
+                      <div class="vc-info">
+                        <div class="vc-title"><%= item.title?.text %></div>
+                        <div class="vc-meta">プレイリスト</div>
+                      </div>
+                    </a>
+
+                  <% } else if (item.type && item.type.endsWith('Channel')) { %>
+                    <a href="/wkt/c/<%= item.author?.id %>" class="ch-card" style="grid-column:1/-1">
+                      <div class="ch-card-avatar">
+                        <img src="<%= item.author?.thumbnails?.[0]?.url %>" alt="<%= item.author?.name %>">
+                      </div>
+                      <div>
+                        <div class="ch-card-name"><%= item.author?.name %></div>
+                        <div class="ch-card-meta">
+                          <%= item.subscribers?.text || '' %>
+                          <% if (item.videos?.text || item.video_count?.text) { %> · <%= item.videos?.text || item.video_count?.text %><% } %>
+                        </div>
+                      </div>
+                    </a>
+                  <% } %>
+
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="empty-state">コンテンツがありません</div>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } %>
+
+      <% if (!hasRecent && !hasShelves) { %>
+        <div class="empty-state">表示できるコンテンツがありません</div>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+    sb.classList.toggle('open');
+    if (window.innerWidth > 1024) mc.style.marginLeft = sb.classList.contains('open') ? '240px' : '0';
+  }
+  const tabPanels = document.querySelectorAll('.tab-panel');
+  const tabBtns   = document.querySelectorAll('.tab-btn');
+  function switchTab(idx) {
+    tabPanels.forEach((p, i) => p.classList.toggle('active', i === idx));
+    tabBtns.forEach((b, i) => b.classList.toggle('active', i === idx));
+  }
+  let descExpanded = false;
+  function toggleChDesc() {
+    descExpanded = !descExpanded;
+    const el = document.getElementById('chDesc');
+    const btn = document.getElementById('chDescToggle');
+    el.classList.toggle('expanded', descExpanded);
+    btn.textContent = descExpanded ? '閉じる' : '続きを読む';
+  }
+  function toggleSubscribe(btn) {
+    const id   = btn.dataset.id;
+    const name = btn.dataset.name;
+    const icon = btn.dataset.icon;
+    let subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const idx = subs.findIndex(s => s.id === id);
+    if (idx !== -1) {
+      subs.splice(idx, 1);
+      btn.textContent = '登録';
+      btn.classList.remove('subscribed');
+      showToast(name + ' の登録を解除しました');
+    } else {
+      subs.push({ id, name, icon });
+      btn.textContent = '登録済み';
+      btn.classList.add('subscribed');
+      showToast(name + ' に登録しました');
+    }
+    localStorage.setItem('subscriptions', JSON.stringify(subs));
+  }
+  window.addEventListener('load', function () {
+    const btn = document.getElementById('subBtn');
+    const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    if (subs.some(s => s.id === btn.dataset.id)) {
+      btn.textContent = '登録済み';
+      btn.classList.add('subscribed');
+    }
+  });
+  $(function () {
+    $('#searchbox').autocomplete({
+      source: function (req, cb) {
+        const term = req.term.trim();
+        if (term.length > 0) {
+          $.ajax({ url: '/wkt/back/suggest', data: { keyword: term },
+            success: function (d) { cb(d.length > 0 ? d : getHistory()); }
+          });
+        } else { cb(getHistory()); }
+      },
+      delay: 1, minLength: 0,
+      select: function (e, ui) { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+    });
+    function getHistory() { return JSON.parse(localStorage.getItem('searchHistory') || '[]'); }
+    $('#searchbox').on('focus', function () { $(this).autocomplete('search', this.value || ''); });
+  });
+  function showToast(text, isError) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.innerHTML = '<span>' + text + '</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>';
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(20px)'; setTimeout(() => t.remove(), 300); }, 3500);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        body { 
+            background: #000; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: monospace;
+        }
+        #player-area { 
+            flex: 1; 
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        ruffle-player {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        @media (pointer: fine) {
+            #ui-root { display: none; }
+        }
+        #ui-root[data-open="false"] .controls {
+            display: none;
+        }
+        #ui-root[data-open="false"] .toggle-handle::before {
+            content: "▲ ひらく ▲";
+        }
+        #ui-root[data-open="true"] .toggle-handle::before {
+            content: "▼ とじる ▼";
+        }
+        .toggle-handle {
+            background: #333;
+            color: #ccc;
+            height: 24px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-top: 1px solid #444;
+        }
+        .controls { 
+            height: 80px;
+            display: flex; 
+            gap: 1px;
+            padding: 0;
+            background: #333;
+            border-top: 1px solid #444;
+        }
+        .btn { 
+            flex: 1; 
+            background: #222;
+            color: #fff;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 18px;
+            border: none;
+            outline: none;
+        }
+        .btn:active { 
+            background: #444;
+        }
+        .swim-btn { border-right: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <div id="player-area"></div>
+
+    <div id="ui-root" data-open="true">
+        <div class="toggle-handle" onclick="toggleUI()"></div>
+
+        <div class="controls">
+            <div class="btn swim-btn" id="swim-trigger">およぐ（長押しで連打）</div>
+            <div class="btn breath-btn" id="breath-trigger">いきつぎ</div>
+        </div>
+    </div>
+
+    <script>
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.RufflePlayer.config = { "letterbox": "on", "forceScale": true };
+        function toggleUI() {
+            const ui = document.getElementById('ui-root');
+            const isOpen = ui.getAttribute('data-open') === 'true';
+            ui.setAttribute('data-open', !isOpen);
+        }
+    </script>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <script>
+        let player;
+        let swimTimer = null;
+        let isLeftNext = true;
+        const swfUrl = "photo.swf";
+
+        window.addEventListener("load", () => {
+            const ruffle = window.RufflePlayer.newest();
+            player = ruffle.createPlayer();
+            document.getElementById("player-area").appendChild(player);
+            player.load(swfUrl);
+
+            const swimBtn = document.getElementById('swim-trigger');
+            const breathBtn = document.getElementById('breath-trigger');
+
+            swimBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAutoSwim(); }, {passive: false});
+            swimBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopAutoSwim(); }, {passive: false});
+            breathBtn.addEventListener('touchstart', (e) => { e.preventDefault(); press('ArrowUp', 38); }, {passive: false});
+            breathBtn.addEventListener('touchend', (e) => { e.preventDefault(); release('ArrowUp', 38); }, {passive: false});
+        });
+
+        function startAutoSwim() {
+            if (swimTimer) return;
+            swimTimer = setInterval(() => {
+                release('ArrowLeft', 37);
+                release('ArrowRight', 39);
+                if (isLeftNext) { press('ArrowLeft', 37); } else { press('ArrowRight', 39); }
+                isLeftNext = !isLeftNext;
+            }, 60);
+        }
+
+        function stopAutoSwim() {
+            clearInterval(swimTimer);
+            swimTimer = null;
+            release('ArrowLeft', 37);
+            release('ArrowRight', 39);
+        }
+
+        function press(name, code) {
+            if (!player) return;
+            player.focus();
+            if (player.keydown) player.keydown(name);
+            player.dispatchEvent(new KeyboardEvent('keydown', { key: name, keyCode: code, which: code, bubbles: true }));
+        }
+
+        function release(name, code) {
+            if (!player) return;
+            if (player.keyup) player.keyup(name);
+            player.dispatchEvent(new KeyboardEvent('keyup', { key: name, keyCode: code, which: code, bubbles: true }));
+        }
+    </script>
+</body>
+</html>

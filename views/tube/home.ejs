@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ホーム</title>
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; font-size: 16px; }
+
+    #topbar { background:#0f0f0f; border-bottom:1px solid #272727; padding:0 16px; display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:1000; height:58px; }
+    .logo-wrap { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; flex-shrink:0; }
+    .logo-icon { width:30px; height:22px; background:#f00; border-radius:4px; position:relative; }
+    .logo-icon::after { content:""; position:absolute; border-left:8px solid #fff; border-top:5px solid transparent; border-bottom:5px solid transparent; top:6px; left:11px; }
+    .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .search-wrap { flex:1; max-width:520px; display:flex; align-items:center; margin:0 6px; }
+    #searchbox { flex:1; padding:0 16px; height:40px; border:1px solid #303030; border-right:none; border-radius:40px 0 0 40px; font-size:16px; background:#121212; color:#fff; outline:none; }
+    #searchbox:focus { border-color:#1a73e8; }
+    .search-submit { border:1px solid #303030; border-left:none; border-radius:0 40px 40px 0; background:#222; width:54px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .search-submit:hover { background:#333; }
+    .search-submit svg { width:20px; height:20px; fill:#fff; }
+    .topbar-right { margin-left:auto; display:flex; align-items:center; gap:4px; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+    .sidebar-section-title { font-size: 14px; font-weight: 500; color: #aaa; padding: 12px 20px 6px; white-space: nowrap; }
+    .page-wrap { padding-top:58px; min-height:100vh; }
+    #main-content { margin-left:0; transition:margin-left 0.2s ease; padding:20px 20px 60px; }
+    .action-bar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+    .action-bar-title { font-size:1.3em; font-weight:700; flex:1; }
+    .action-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; border-radius:20px; border:none; background:#272727; color:#fff; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .action-btn:hover { background:#3f3f3f; }
+    .action-btn svg { width:16px; height:16px; fill:currentColor; }
+    .action-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+    #feedGrid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap:20px;
+    }
+
+    .video-card { text-decoration:none; color:inherit; display:block; }
+    .video-card:hover .video-title { color:#3ea6ff; }
+    .thumb-wrap { width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#1a1a1a; position:relative; }
+    .thumb-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+    .video-duration { position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,.85); color:#fff; font-size:12px; font-weight:700; padding:2px 5px; border-radius:3px; }
+    .video-info { padding:10px 2px 0; }
+    .channel-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .ch-icon { width:24px; height:24px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#333; }
+    .ch-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+    .video-title { font-size:15px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+    .video-meta { font-size:13px; color:#717171; }
+    .video-ch-name { font-size:13px; color:#aaa; }
+
+    .pl-card-home { text-decoration:none; color:inherit; display:block; }
+    .pl-card-home:hover .pl-home-title { color:#3ea6ff; }
+    .pl-thumb-home { width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#1a1a1a; position:relative; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:1px; }
+    .pl-thumb-home img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pl-thumb-home .ph { background:#2a2a2a; }
+    .pl-overlay { position:absolute; right:0; top:0; bottom:0; width:38%; background:rgba(0,0,0,.72); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+    .pl-overlay svg { width:20px; height:20px; fill:#fff; }
+    .pl-overlay span { color:#fff; font-size:13px; font-weight:700; }
+    .pl-home-title { font-size:15px; font-weight:500; line-height:1.4; margin:8px 0 3px; }
+    .pl-home-meta { font-size:13px; color:#aaa; }
+
+    .source-badge { display:inline-block; font-size:11px; padding:2px 7px; border-radius:8px; background:#1f1f1f; color:#717171; margin-bottom:6px; }
+
+    .skeleton-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; }
+    .skeleton-card { border-radius:10px; overflow:hidden; }
+    .skeleton-thumb { width:100%; aspect-ratio:16/9; background:#1a1a1a; border-radius:10px; animation:shimmer 1.4s infinite; }
+    .skeleton-line { height:14px; background:#1a1a1a; border-radius:6px; margin-top:10px; animation:shimmer 1.4s infinite; }
+    .skeleton-line.short { width:60%; }
+    @keyframes shimmer { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+    .empty-state { text-align:center; padding:80px 20px 40px; }
+    .empty-state svg { width:64px; height:64px; fill:#333; margin:0 auto 20px; display:block; }
+    .empty-state h2 { font-size:1.2em; font-weight:600; margin-bottom:10px; color:#aaa; }
+    .empty-state p { font-size:14px; color:#555; line-height:1.7; max-width:360px; margin:0 auto 24px; }
+    .empty-state-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 22px; border-radius:20px; border:none; background:#272727; color:#fff; font-size:14px; cursor:pointer; text-decoration:none; }
+    .empty-state-btn:hover { background:#3f3f3f; }
+
+    .error-msg { text-align:center; padding:40px 20px; color:#aaa; font-size:14px; }
+
+    .ui-autocomplete { background:#212121 !important; border:none !important; border-radius:0 0 12px 12px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; z-index:10001 !important; padding:8px 0 !important; }
+    .ui-menu-item-wrapper { color:#eee !important; padding:11px 18px !important; font-size:15px !important; border:none !important; }
+    .ui-state-active { background:#3f3f3f !important; margin:0 !important; border:none !important; }
+    .ui-helper-hidden-accessible { display:none; }
+
+    @media (max-width:600px) {
+      #feedGrid, .skeleton-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+      #main-content { padding:14px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/wkt" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+    <input type="text" name="q" id="searchbox" placeholder="検索" autocomplete="off">
+    <button type="submit" class="search-submit">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+  <div class="topbar-right">
+    <button class="icon-btn action-btn" id="refreshBtn" onclick="refresh()" title="再取得" style="border-radius:20px">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      再取得
+    </button>
+  </div>
+</header>
+
+
+  <div id="sidebar">
+    <a href="/wkt" class="sidebar-item active">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      ホーム
+    </a>
+    <a href="/wkt/trend" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      トレンド
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/subscriptions" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+      登録チャンネル
+    </a>
+    <a href="/wkt/cl/history" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      履歴
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/favorites" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+      お気に入り
+    </a>
+    <a href="/wkt/cl/playlists" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      プレイリスト
+    </a>
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section-title">その他のサービス</div>
+    <a href="/gm/home/" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4m7-2h.01m2.99-2h.01"/></svg></span>
+      ゲーム
+    </a>
+    <a href="https://wakalight.onrender.com/index.html" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
+      プロキシ
+    </a>
+    <a href="/tools/home" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
+      ツール
+    </a>
+
+    <div class="sidebar-divider"></div>
+    <a href="https://wkt-v3.onrender.com/settings" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+      設定
+    </a>
+  </div>
+
+
+<div class="page-wrap">
+  <div id="main-content">
+    <div id="feedContainer"></div>
+  </div>
+</div>
+
+<script>
+  function toggleSidebar(forceOpen = null) {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+
+    if (forceOpen === true) sb.classList.add('open');
+    else if (forceOpen === false) sb.classList.remove('open');
+    else sb.classList.toggle('open');
+
+    const isOpen = sb.classList.contains('open');
+
+    if (window.innerWidth > 1024) {
+      mc.style.marginLeft = isOpen ? '220px' : '0';
+    } else {
+      mc.style.marginLeft = '0';
+    }
+    localStorage.setItem('sidebar_expanded', isOpen);
+  }
+
+  (function() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const savedSidebar = localStorage.getItem('sidebar_expanded');
+    document.addEventListener('DOMContentLoaded', function() {
+      const sb = document.getElementById('sidebar');
+      const mc = document.getElementById('main-content');
+      if (isPortrait) {
+        sb.classList.remove('open');
+        mc.style.marginLeft = '0';
+      } else {
+        const shouldOpen = (savedSidebar === 'true') || (savedSidebar === null && window.innerWidth > 1024);
+        if (shouldOpen) {
+          sb.classList.add('open');
+          if (window.innerWidth > 1024) mc.style.marginLeft = '220px';
+        } else {
+          sb.classList.remove('open');
+          mc.style.marginLeft = '0';
+        }
+      }
+    });
+  })();
+
+  let allFetchedItems = [];
+  let isFetching = false;
+
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const strictShuffle = (array) => {
+    const a = [...(array || [])];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const pick = (arr, n) => strictShuffle(arr).slice(0, n);
+
+  const dedup = (items) => {
+    if (!Array.isArray(items)) return [];
+    const seen = new Set();
+    return items.filter(v => {
+      if (!v) return false;
+      const key = (v.type === 'Playlist' ? 'pl_' : '') + (v.id || v.videoId || '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const getLS = (key) => {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; }
+  };
+
+  const hasUserData = () => {
+    return getLS('wakametubehistory').length > 0 ||
+           getLS('wakametubefavorites').length > 0 ||
+           getLS('subscriptions').length > 0 ||
+           getLS('searchHistory').length > 0;
+  };
+
+  const itemsFromHistory = () => getLS('wakametubehistory').map(v => ({
+    id: v.videoId, title: v.videoTitle,
+    author: { name: v.channelName, id: v.channelId, thumbnail: v.channelIcon },
+    thumbnail: `/wkt/back/vi/${v.videoId}/mqdefault.jpg`,
+    duration: v.duration,
+    published: v.published,
+    view_count: v.viewCount,
+    type: 'Video'
+  })).filter(v => v.id);
+
+  const itemsFromFavorites = () => getLS('wakametubefavorites').map(v => ({
+    id: v.videoId, title: v.videoTitle,
+    author: { name: v.channelName, id: v.channelId, thumbnail: v.channelIcon },
+    thumbnail: `/wkt/back/vi/${v.videoId}/mqdefault.jpg`,
+    duration: v.duration,
+    published: v.published,
+    view_count: v.viewCount,
+    type: 'Video'
+  })).filter(v => v.id);
+
+  const pickSearchQuery = () => {
+    const h = getLS('searchHistory');
+    const f = getLS('wakametubefavorites').map(v => v.videoTitle).filter(Boolean);
+    const pool = [...h, ...f];
+    return pool.length ? pool[rand(0, pool.length - 1)].split(/[\s　]/)[0] : null;
+  };
+
+  const pickNextFeedId = () => {
+    const h = getLS('wakametubehistory');
+    return h[rand(0, h.length - 1)].videoId;
+  };
+
+  const pickSubscription = () => {
+    const s = getLS('subscriptions');
+    return s.length ? s[rand(0, s.length - 1)] : null;
+  };
+
+  const pickDynamicTag = () => {
+    const tags = getLS('wkt_tag');
+
+    const totalWeight = tags.reduce((sum, t) => sum + t.num, 0);
+    let random = Math.floor(Math.random() * totalWeight);
+
+    for (const t of tags) {
+      if (random < t.num) return t.tag;
+      random -= t.num;
+    }
+    return tags[0].tag;
+  };
+
+  async function fetchApi(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.status === 'success' ? json.data : null;
+    } catch (e) { return null; }
+  }
+
+  async function fetchAll() {
+    if (isFetching) return;
+    isFetching = true;
+    setButtons(true);
+    showSkeleton();
+
+    const q = pickSearchQuery();
+    const nextId = pickNextFeedId();
+    const sub = pickSubscription();
+
+    const pool = [];
+    if (Math.random() < 0.01) pool.push({ key: 'trend', getUrl: () => '/api/yt/trend' });
+    const dynamicTag = pickDynamicTag();
+    pool.push({ 
+      key: 'hashtag', 
+      getUrl: () => `/api/yt/hashtag?q=${encodeURIComponent(dynamicTag)}` 
+    });
+
+    if (nextId) pool.push({ key: 'nextfeed', getUrl: () => `/api/yt/nextfeed?id=${nextId}` });
+    if (q) pool.push({ key: 'search', getUrl: () => `/api/yt/searchjson?q=${encodeURIComponent(q)}` });
+    if (sub) {
+      pool.push({
+        key: 'sub',
+        getUrl: () => Math.random() < 0.7 ? `/api/yt/channelfeed?id=${sub.id}` : `/api/yt/searchjson?q=${encodeURIComponent(sub.name)}`
+      });
+    }
+
+    const calls = [];
+    for (let i = 0; i < 10; i++) {
+      calls.push(pool[rand(0, pool.length - 1)]);
+    }
+
+    const results = await Promise.all(calls.map(api => fetchApi(api.getUrl())));
+
+    let rawList = [];
+    results.forEach((data, i) => {
+      if (!data) return;
+      let items = Array.isArray(data) ? data : [];
+      if (calls[i].key === 'trend') items = items.slice(0, 1);
+
+      items.forEach(item => {
+        if (item && item.id) rawList.push({ ...item });
+      });
+    });
+
+    const localItems = [...itemsFromHistory(), ...itemsFromFavorites()];
+
+    let bigPool = [...rawList, ...localItems];
+
+    bigPool = strictShuffle(bigPool);
+    bigPool = dedup(bigPool);
+    allFetchedItems = strictShuffle(bigPool);
+
+    isFetching = false;
+    setButtons(false);
+    renderItems(allFetchedItems);
+  }
+
+  function renderVideoCard(v) {
+    const vid = v.id || v.videoId;
+    const href = `/wkt/watch/${esc(vid)}`;
+    const thumb = v.thumbnail || `/wkt/back/vi/${esc(vid)}/mqdefault.jpg`;
+
+    let chIcon = v.author?.thumbnail;
+    let chName = v.author?.name || '';
+    if (!chIcon) {
+      const subs = getLS('subscriptions');
+      const matched = subs.find(s => s.id === v.author?.id);
+      if (matched) {
+        chIcon = matched.icon;
+        chName = matched.name;
+      }
+    }
+
+    return `
+      <a href="${href}" class="video-card">
+        <div class="thumb-wrap">
+          <img loading="lazy" src="/wkt/back/vi/${vid}/mqdefault.jpg">
+          ${v.duration ? `<span class="video-duration">${esc(v.duration)}</span>` : ''}
+        </div>
+        <div class="video-info">
+          <div class="channel-row">
+            <div class="ch-icon">${chIcon ? `<img src="${esc(chIcon)}">` : ''}</div>
+            <div class="video-ch-name">${esc(chName)}</div>
+          </div>
+          <div class="video-title">${esc(v.title || '')}</div>
+          <div class="video-meta">${[v.view_count, v.published].filter(Boolean).join(' · ')}</div>
+        </div>
+      </a>`;
+  }
+
+  function renderItems(items) {
+    const container = document.getElementById('feedContainer');
+    if (!container) return;
+    if (!items || items.length === 0) { showEmpty(); return; }
+    const final = strictShuffle(items);
+    container.innerHTML = `<div id="feedGrid">${final.map(renderVideoCard).join('')}</div>`;
+  }
+
+  window.refresh = () => {
+    if (isFetching) return;
+    allFetchedItems = [];
+    fetchAll();
+  };
+
+  window.shuffle = () => {
+    if (isFetching || !allFetchedItems || allFetchedItems.length === 0) return;
+    allFetchedItems = strictShuffle(allFetchedItems);
+    renderItems(allFetchedItems);
+  };
+
+  window.toggleSidebar = () => {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+    if (sb && mc) {
+      sb.classList.toggle('open');
+      if (window.innerWidth > 1024) mc.style.marginLeft = sb.classList.contains('open') ? '240px' : '0';
+    }
+  };
+
+  function setButtons(loading) {
+    ['shuffleBtn', 'refreshBtn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = loading;
+    });
+  }
+
+  function showSkeleton() {
+    const container = document.getElementById('feedContainer');
+    if (container) container.innerHTML = `<div class="skeleton-grid">${'<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>'.repeat(12)}</div>`;
+  }
+
+  function showEmpty() {
+    const container = document.getElementById('feedContainer');
+    if (container) container.innerHTML = '<div class="empty-state"><h2>動画が見つかりません</h2><p>検索や再生をするとおすすめが表示されます。</p></div>';
+  }
+
+  $(function() {
+    $('#searchbox').autocomplete({
+      source: (req, cb) => {
+        const term = req.term.trim();
+        if (!term) return cb(getLS('searchHistory'));
+        $.ajax({ url: '/wkt/back/suggest', data: { keyword: term }, success: (d) => cb(d.length ? d : getLS('searchHistory')) });
+      },
+      delay: 1, minLength: 0,
+      select: (e, ui) => { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+    }).on('focus', function() { $(this).autocomplete('search', this.value); });
+
+    if (!hasUserData()) {
+      showEmpty();
+    } else {
+      fetchAll();
+    }
+  });
+</script>
+</body>
+</html>

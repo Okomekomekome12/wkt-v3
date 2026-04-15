@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="format-detection" content="telephone=no">
+  <title><%= videoInfo.title %></title>
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+  <script src="/js/watch.js"></script>
+  <link rel="apple-touch-icon" href="/wkt/back/vi/<%= videoId %>/maxresdefault.jpg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; font-size: 16px; }
+
+    #topbar { background:#0f0f0f; border-bottom:1px solid #272727; padding:0 16px; display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:1000; height:58px; }
+    .logo-wrap { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; flex-shrink:0; }
+    .logo-icon { width:30px; height:22px; background:#f00; border-radius:4px; position:relative; }
+    .logo-icon::after { content:""; position:absolute; border-left:8px solid #fff; border-top:5px solid transparent; border-bottom:5px solid transparent; top:6px; left:11px; }
+    .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .search-wrap { flex:1; max-width:520px; display:flex; align-items:center; margin:0 6px; }
+    #searchbox { flex:1; padding:0 16px; height:40px; border:1px solid #303030; border-right:none; border-radius:40px 0 0 40px; font-size:16px; background:#121212; color:#fff; outline:none; }
+    #searchbox:focus { border-color:#1a73e8; }
+    .search-submit { border:1px solid #303030; border-left:none; border-radius:0 40px 40px 0; background:#222; width:54px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .search-submit:hover { background:#333; }
+    .search-submit svg { width:20px; height:20px; fill:#fff; }
+    .topbar-right { margin-left:auto; display:flex; align-items:center; gap:2px; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+
+    .page-wrap { display:flex; padding-top:58px; min-height:100vh; }
+    #page-inner { display:flex; flex:1; min-width:0; }
+    #main-col { flex:1; min-width:0; padding:20px 22px 40px; }
+
+    #side-col { width:390px; min-width:390px; padding:20px 16px 40px 0; display:flex; flex-direction:column; gap:8px; }
+    #page-inner.related-bottom { flex-direction:column; }
+    #page-inner.related-bottom #side-col { width:100%; min-width:0; padding:0 22px 40px; }
+    #page-inner.related-bottom #side-col .side-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    #related-grid { display:flex; flex-direction:column; gap:8px; }
+    #related-grid.grid-view { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+
+    .player-wrap { width:100%; aspect-ratio:16/9; background:#000; border-radius: 5px; overflow:hidden; position:relative; }
+    .player-wrap iframe, .player-wrap video { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
+    #erroreloadBtn { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; background:#1a73e8; color:#fff; border:none; border-radius:10px; padding:12px 22px; font-size:15px; cursor:pointer; }
+    .loading-indicator { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9; }
+    .loading-indicator img { width:64px; height:64px; }
+
+    .video-title { font-size:1.35em; font-weight:600; line-height:1.4; margin-top:14px; }
+    .meta-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:12px; padding-bottom:12px; border-bottom:1px solid #272727; }
+    .meta-text { font-size:14px; color:#aaa; }
+    .action-btns { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+    .action-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; border-radius:20px; border:none; background:#272727; color:#fff; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .action-btn:hover { background:#3f3f3f; }
+    .action-btn svg { width:16px; height:16px; fill:currentColor; }
+    .action-btn.fav-active { color:#ff6b6b; }
+
+    .channel-row { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #272727; }
+    .ch-avatar { width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#333; }
+    .ch-avatar img { width:100%; height:100%; object-fit:cover; }
+    .ch-info { flex:1; min-width:0; }
+    .ch-name { font-size:15px; font-weight:600; color:#fff; text-decoration:none; display:block; }
+    .ch-name:hover { color:#ddd; }
+    .ch-subs { font-size:13px; color:#aaa; margin-top:2px; }
+    .sub-btn { padding:9px 18px; border-radius:20px; border:none; background:#fff; color:#0f0f0f; font-size:14px; font-weight:700; cursor:pointer; flex-shrink:0; }
+    .sub-btn:hover { background:#ddd; }
+    .sub-btn.subscribed { background:#272727; color:#aaa; border:1px solid #3f3f3f; }
+
+    .playlist-section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      margin: 16px 0;
+      overflow: hidden;
+    }
+
+    .playlist-section-header {
+      background: #282828;
+      padding: 12px 16px;
+      border-bottom: 1px solid #3f3f3f;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .playlist-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .playlist-section-count {
+      font-size: 12px;
+      color: #aaa;
+      flex-shrink: 0;
+    }
+
+    .playlist-track-list {
+      background: #0f0f0f;
+      max-height: 360px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .playlist-track-item {
+      display: flex !important;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: #ccc;
+      border-left: 4px solid transparent;
+      transition: background 0.2s;
+    }
+
+    .playlist-track-item:hover {
+      background: #1e1e1e;
+    }
+
+    .playlist-track-item.playing {
+      background: #272727;
+      border-left: 4px solid #3ea6ff;
+      color: #3ea6ff;
+    }
+
+    .playlist-track-num {
+      width: 20px;
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .playlist-track-thumb {
+      width: 100px;
+      aspect-ratio: 16/9;
+      flex-shrink: 0;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #333;
+    }
+
+    .playlist-track-thumb img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      display: block;
+    }
+
+    .playlist-track-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .playlist-track-title {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: inherit;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 2px;
+    }
+
+    .playlist-track-ch {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .playlist-track-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .playlist-track-list::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 3px;
+    }
+
+    .desc-box { background:#1f1f1f; border-radius:12px; padding:14px 16px; margin:14px 0; cursor:pointer; user-select:none; }
+    .desc-box:hover { background:#252525; }
+    .desc-preview { font-size:15px; color:#ccc; line-height:1.7; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .desc-full { display:none; font-size:15px; color:#ccc; line-height:1.7; white-space:pre-wrap; word-break:break-word; margin-top:4px; }
+    .desc-full.show { display:block; }
+    .desc-toggle-row { display:flex; align-items:center; gap:4px; margin-top:8px; color:#3ea6ff; font-size:14px; pointer-events:none; }
+    .desc-toggle-row svg { width:16px; height:16px; fill:#3ea6ff; transition:transform 0.2s; }
+    .desc-toggle-row.open svg { transform:rotate(180deg); }
+    .desc-full .wkt-link {
+        color: #3ea6ff;
+        text-decoration: none;
+    }
+    .desc-full .wkt-link:hover {
+        text-decoration: underline;
+    }
+
+    .pl-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); display:flex; align-items:center; justify-content:center; z-index:4000; padding:16px; }
+    .pl-modal { background:#1a1a1a; border-radius:14px; padding:20px; width:100%; max-width:420px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .pl-modal-title { font-size:17px; font-weight:700; margin-bottom:14px; color:#fff; }
+    .pl-new-row { display:flex; gap:8px; margin-bottom:14px; }
+    .pl-new-input { flex:1; padding:10px 14px; border-radius:10px; background:#2f2f2f; border:1px solid #3f3f3f; color:#fff; font-size:15px; outline:none; }
+    .pl-new-input:focus { border-color:#1a73e8; }
+    .pl-new-btn { padding:10px 16px; border-radius:10px; border:none; background:#1a73e8; color:#fff; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+    .pl-list { display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; padding-right:4px; }
+    .pl-list-item { display:flex; align-items:center; gap:12px; padding:8px; border-radius:10px; background:#272727; cursor:pointer; border:1px solid transparent; transition: background 0.2s; position: relative; }
+    .pl-list-item:hover { background:#383838; }
+    .pl-list-item.added { background:#1a2a1a; border-color:#2d6a2d; }
+
+    .pl-item-thumb { width:70px; aspect-ratio:16/9; flex-shrink:0; border-radius:6px; overflow:hidden; background:#111; }
+    .pl-item-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pl-item-empty { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#444; font-size:10px; font-weight:bold; background:#111; }
+
+    .pl-item-info { flex:1; min-width:0; }
+    .pl-item-name { font-size:14px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pl-item-meta { font-size:12px; color:#aaa; margin-top:2px; }
+
+    .pl-list-item-check { width:20px; height:20px; fill:#4caf50; display:none; flex-shrink:0; }
+    .pl-list-item.added .pl-list-item-check { display:block; }
+
+    .pl-modal-close { width:100%; padding:10px; border-radius:10px; border:1px solid #3f3f3f; background:none; color:#aaa; font-size:15px; cursor:pointer; margin-top:14px; }
+    
+    .comments-section {
+        margin-top: 24px;
+    }
+
+    .comments-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .collapse-btn {
+        background: none;
+        border: none;
+        color: #aaa;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 16px;
+        padding: 8px 14px;
+        border-radius: 8px;
+    }
+
+    .collapse-btn:hover {
+        background: #272727;
+        color: #fff;
+    }
+
+    .collapse-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
+        transition: transform 0.2s;
+    }
+
+    .collapse-btn.collapsed svg {
+        transform: rotate(180deg);
+    }
+
+    #commentsList {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .comment-item {
+        display: flex;
+        gap: 16px;
+    }
+
+    .comment-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: #333;
+    }
+
+    .comment-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .comment-author {
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 6px;
+    }
+
+    .comment-author a {
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .comment-author a:hover {
+        color: #3ea6ff;
+    }
+
+    .comment-text {
+        font-size: 17px;
+        color: #ccc;
+        line-height: 1.6;
+        word-break: break-word;
+    }
+
+    #commentError {
+        color: #f87171;
+        font-size: 16px;
+        margin: 12px 0;
+        display: none;
+    }
+
+    #retryBtn {
+        display: none;
+        padding: 12px 28px;
+        border-radius: 24px;
+        border: 1px solid #3f3f3f;
+        background: none;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 12px;
+    }
+
+    #retryBtn:hover {
+        background: #272727;
+    }
+
+    .side-heading { font-size:16px; font-weight:600; padding-bottom:8px; border-bottom:1px solid #272727; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .related-card { display:flex; gap:10px; text-decoration:none; color:inherit; width:100%; }
+    .related-card:hover .related-title { color:#3ea6ff; }
+    .related-thumb { flex-shrink:0; width:160px; height:90px; border-radius:8px; overflow:hidden; background:#1a1a1a; position:relative; }
+    .related-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .related-dur { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,.85); color:#fff; font-size:12px; font-weight:700; padding:2px 5px; border-radius:3px; }
+    .related-info { flex:1; min-width:0; }
+    .related-title { font-size:14px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+    .related-ch, .related-meta { font-size:12px; color:#aaa; }
+    #related-grid { display:flex; flex-direction:column; gap:12px; }
+    @media (max-width: 1000px) {
+      .related-card { gap:16px; margin-bottom:4px; }
+      .related-thumb { width:360px; height:202px; border-radius:12px; }
+      .related-title { font-size:18px; }
+      #related-grid { gap:20px; }
+      #related-grid.grid-view { grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:32px 16px; }
+    }
+    .related-bottom #related-grid { gap:20px; padding:16px 0; }
+    .related-bottom .related-card { gap:16px; }
+    .related-bottom .related-thumb { width:360px; height:202px; border-radius:12px; }
+    .related-bottom .related-title { font-size:18px; }
+    #related-grid.grid-view { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px 10px; }
+    #related-grid.grid-view .related-card { flex-direction:column; }
+    #related-grid.grid-view .related-thumb { width:100%; height:auto; aspect-ratio:16/9; }
+    .related-bottom #related-grid.grid-view { grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:32px 16px; }
+    .related-bottom #related-grid.grid-view .related-thumb { width:100%; height:auto; }
+    .view-switch { display:flex; background:#272727; border-radius:16px; padding:2px; gap:1px; }
+    .view-switch-btn { background:none; border:none; width:32px; height:28px; border-radius:14px; cursor:pointer; color:#aaa; display:flex; align-items:center; justify-content:center; padding:0; }
+    .view-switch-btn.active { background:#555; color:#fff; }
+    .view-switch-btn svg { width:16px; height:16px; fill:currentColor; pointer-events:none; }
+
+    #controlPanel { display:none; position:fixed; bottom:20px; right:20px; width:440px; height:500px; background:#181818; border:1px solid #3f3f3f; border-radius:16px; z-index:2000; box-shadow:0 12px 40px rgba(0,0,0,.7); overflow:hidden; flex-direction:column; }
+    #controlPanel.open { display:flex; }
+    .cp-header { display:flex; align-items:center; padding:14px 16px 0; gap:8px; flex-shrink:0; }
+    .cp-title { font-size:16px; font-weight:600; flex:1; }
+    .cp-close { background:none; border:none; color:#aaa; font-size:24px; cursor:pointer; line-height:1; }
+    .cp-tabs { display:flex; gap:4px; padding:10px 16px 0; flex-shrink:0; }
+    .cp-tab { padding:8px 16px; border-radius:20px; border:none; background:#272727; color:#aaa; font-size:14px; cursor:pointer; transition:background 0.15s; }
+    .cp-tab.active { background:#fff; color:#0f0f0f; font-weight:600; }
+    .cp-slide-wrap { flex:1; overflow:hidden; position:relative; }
+    .cp-slide-track { display:flex; height:100%; transition:transform 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .cp-slide-page { min-width:100%; height:100%; overflow-y:auto; padding:14px 16px 18px; }
+    .cp-card { background:#272727; border-radius:12px; padding:14px; margin-bottom:10px; }
+    .cp-card-title { font-size:12px; color:#aaa; margin-bottom:10px; text-transform:uppercase; letter-spacing:.6px; font-weight:600; }
+    .cp-btn { display:flex; align-items:center; gap:8px; width:100%; padding:11px 14px; border-radius:10px; border:none; background:#3f3f3f; color:#fff; font-size:15px; cursor:pointer; margin-bottom:8px; text-align:left; }
+    .cp-btn:hover { background:#555; }
+    .cp-btn svg { width:17px; height:17px; fill:currentColor; flex-shrink:0; }
+    .cp-btn:last-child { margin-bottom:0; }
+    .cp-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; font-size:15px; }
+    .cp-toggle-row + .cp-toggle-row { border-top:1px solid #3a3a3a; }
+    .toggle-switch { position:relative; width:46px; height:26px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-switch .slider { position:absolute; inset:0; background:#555; border-radius:26px; cursor:pointer; transition:background 0.2s; }
+    .toggle-switch .slider:before { content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform 0.2s; }
+    .toggle-switch input:checked + .slider { background:#1a73e8; }
+    .toggle-switch input:checked + .slider:before { transform:translateX(20px); }
+    .cp-mode-card { display:flex; align-items:flex-start; gap:12px; background:#272727; border-radius:12px; padding:14px; margin-bottom:8px; cursor:pointer; border:2px solid transparent; transition:border-color 0.15s; }
+    .cp-mode-card:hover { background:#303030; }
+    .cp-mode-card.selected { border-color:#1a73e8; }
+    .cp-mode-card input[type=radio] { margin-top:2px; flex-shrink:0; accent-color:#1a73e8; width:16px; height:16px; }
+    .cp-mode-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+    .cp-mode-desc { font-size:13px; color:#aaa; line-height:1.5; }
+    .cp-mode-link { color:#3ea6ff; font-size:13px; text-decoration:none; }
+    .cp-save-btn { width:100%; padding:12px; border-radius:10px; border:none; background:#1a73e8; color:#fff; font-size:15px; font-weight:600; cursor:pointer; margin-top:4px; }
+    .cp-save-btn:hover { background:#1557b0; }
+
+    .layout-toggle-btn { display:flex; align-items:center; gap:5px; padding:7px 13px; border-radius:20px; border:none; background:#272727; color:#fff; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .layout-toggle-btn:hover { background:#3f3f3f; }
+    .layout-toggle-btn svg { width:15px; height:15px; fill:currentColor; }
+
+    .toast { position:fixed; top:70px; right:16px; background:#212121; border:1px solid #3f3f3f; border-radius:10px; padding:14px 18px; font-size:15px; color:#fff; z-index:9999; display:flex; align-items:center; gap:12px; box-shadow:0 4px 20px rgba(0,0,0,.5); max-width:360px; transition:opacity .3s,transform .3s; }
+    .toast.error { border-color:#f87171; background:#2a1515; }
+    .toast-close { background:none; border:none; color:#aaa; cursor:pointer; font-size:20px; flex-shrink:0; }
+
+    .tut-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:3000; padding:16px; overflow-y:auto; }
+    .tut-card { background:#1a1a1a; border-radius:16px; padding:24px; width:100%; max-width:900px; }
+    .tut-title { font-size:20px; font-weight:700; margin-bottom:6px; text-align:center; }
+    .tut-sub { font-size:15px; color:#aaa; text-align:center; margin-bottom:20px; }
+    .tut-options { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .tut-option { background:#272727; border-radius:12px; overflow:hidden; }
+    .tut-option iframe, .tut-placeholder, .tut-placeholder video { width:100%; aspect-ratio:16/9; border:none; background:#111; display:flex; align-items:center; justify-content:center; color:#666; font-size:14px; }
+    .tut-option-body { padding:14px; }
+    .tut-option-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+    .tut-option-desc { font-size:13px; color:#aaa; margin-bottom:12px; line-height:1.4; }
+    .tut-use-btn { width:100%; padding:10px; border-radius:8px; border:none; background:#1a73e8; color:#fff; font-size:14px; font-weight:600; cursor:pointer; }
+    .tut-use-btn:hover { background:#1557b0; }
+    .tut-skip { display:block; text-align:center; margin-top:16px; color:#aaa; font-size:14px; cursor:pointer; background:none; border:none; width:100%; }
+    .tut-skip:hover { color:#fff; }
+    @media (max-width:600px) { .tut-options { grid-template-columns:1fr; } .tut-card { padding:16px; } }
+    @media (min-width:601px) and (max-width:860px) { .tut-options { grid-template-columns:repeat(2,1fr); } }
+
+    .ui-autocomplete { background:#212121 !important; border:none !important; border-radius:0 0 12px 12px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; z-index:10001 !important; padding:8px 0 !important; }
+    .ui-menu-item-wrapper { color:#eee !important; padding:11px 18px !important; font-size:15px !important; border:none !important; }
+    .ui-state-active { background:#3f3f3f !important; margin:0 !important; border:none !important; }
+    .ui-helper-hidden-accessible { display:none; }
+
+    @media (max-width:1100px) { #side-col { width:340px; min-width:340px; } }
+    @media (max-width:900px) {
+      #page-inner { flex-direction:column; }
+      #side-col { width:100%; min-width:0; padding:0 22px 40px; }
+      .layout-toggle-btn { display:none; }
+      #controlPanel { width:calc(100vw - 32px); right:16px; bottom:16px; height:460px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/wkt" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+    <input type="text" name="q" id="searchbox" placeholder="検索" autocomplete="off">
+    <button type="submit" class="search-submit">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+  <div class="topbar-right">
+    <button class="icon-btn" title="サムネをダウンロード" onclick="window.open('/wkt/back/vi/<%= videoId %>/maxresdefault.jpg','_blank')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="white"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7v2h14v-2H5z"/></svg>
+    </button>
+    <% if (videotype === 'video') { %>
+    <button class="icon-btn" title="ストリームURLを開く" onclick="window.open('<%- src.stream_url %>','_blank')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="white"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+    </button>
+    <% } %>
+    <button class="layout-toggle-btn" id="layoutToggleBtn" onclick="toggleRelatedLayout()">
+      <svg viewBox="0 0 24 24"><path d="M3 5h8v8H3zm10 0h8v8h-8zM3 15h8v4H3zm10 0h8v4h-8z"/></svg>
+      <span id="layoutLabel">関連動画を下に</span>
+    </button>
+    <button class="icon-btn" title="コントロール" onclick="document.getElementById('controlPanel').classList.toggle('open')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="white"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+  </div>
+</header>
+
+      <div id="sidebar">
+        <a href="/wkt" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          ホーム
+        </a>
+        <a href="/wkt/trend" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          トレンド
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/wkt/cl/subscriptions" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+          登録チャンネル
+        </a>
+        <a href="/wkt/cl/history" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          履歴
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/wkt/cl/favorites" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+          お気に入り
+        </a>
+        <a href="/wkt/cl/playlists" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+          プレイリスト
+        </a>
+        <div class="sidebar-divider"></div>
+        <a href="/wkt/settings" class="sidebar-item">
+          <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+          設定
+        </a>
+      </div>
+
+<div class="page-wrap">
+  <div id="page-inner">
+    <div id="main-col">
+
+      <div class="player-wrap">
+        <% if (videotype === 'iframe') { %>
+          <iframe src="<%= src %>" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        <% } else { %>
+          <div class="loading-indicator" id="loadingIndicator">
+            <img src="https://cdn.glitch.global/3128bf45-3a23-4695-81ba-3aba21b8585b/IMG_1966.gif?v=1729824394361" alt="Loading">
+          </div>
+          <video id="video" controls preload="auto" playsinline poster="/wkt/back/vi/<%= videoId %>/maxresdefault.jpg">
+            <source id="videoSrc" src="<%- src.stream_url %>" type="video/mp4">
+          </video>
+          <audio id="audio" style="display:none"></audio>
+          <button id="erroreloadBtn" onclick="reloadVideo()">🔄 再読み込み</button>
+        <% } %>
+      </div>
+
+      <div class="video-title"><%= videoInfo.title %></div>
+
+      <div class="meta-row">
+        <span class="meta-text"><%= videoInfo.viewCount %> 回視聴</span>
+        <span class="meta-text">・</span>
+        <span class="meta-text"><%= videoInfo.uploadDate %></span>
+        <% if (videoInfo.likeCount) { %><span class="meta-text">・ <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-top: -3px;">
+            <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+          </svg> <%= videoInfo.likeCount %></span><% } %>
+        <div class="action-btns">
+          <button class="action-btn" id="favBtn" onclick="toggleFav()">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            お気に入り
+          </button>
+          <button class="action-btn" id="addToPlaylistBtn" onclick="openPlaylistModal()">
+            <svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            プレイリスト
+          </button>
+        </div>
+      </div>
+
+      <div class="channel-row">
+        <a href="/wkt/c/<%= videoInfo.channelId %>"><div class="ch-avatar"><% if (videoInfo.channelIcon) { %><img src="<%= videoInfo.channelIcon %>" alt=""><% } %></div></a>
+        <div class="ch-info">
+          <a href="/wkt/c/<%= videoInfo.channelId %>" class="ch-name"><%= videoInfo.channelName %></a>
+          <% if (videoInfo.channelSubsc) { %><div class="ch-subs"><%= videoInfo.channelSubsc %></div><% } %>
+        </div>
+        <button class="sub-btn" id="subBtn" onclick="toggleSubscribe('<%= videoInfo.channelId %>','<%= videoInfo.channelName %>','<%= videoInfo.channelIcon %>')">登録</button>
+      </div>
+      <div id="playlistSection" style="display:none"></div>
+
+        <% 
+          const formatDescription = (rawText) => {
+            if (!rawText) return '';
+            let text = rawText;
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s]*)/g;
+            text = text.replace(ytRegex, '<a href="/wkt/watch/$1" class="wkt-link">/wkt/watch/$1</a>');
+            const tagRegex = /#([^\s#!"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~]+)/g;
+            text = text.replace(tagRegex, (match, tag) => {
+              return `<a href="/wkt/hashtag?q=${encodeURIComponent(tag)}" class="wkt-link">#${tag}</a>`;
+            });
+
+            return text;
+          };
+          const previewText = (videoInfo.description || '')
+            .replace(/\n/g, ' ')
+            .replace(/<br>/g, ' ');
+          const fullText = formatDescription(videoInfo.description || '')
+            .replace(/\n/g, '<br>');
+        %>
+
+        <% if (videoInfo.description) { %>
+        <div class="desc-box" id="descBox" onclick="toggleDesc()">
+          <div class="desc-preview" id="descPreview"><%- previewText %></div>
+          <div class="desc-full" id="descFull"><%- fullText %></div>
+
+          <div class="desc-toggle-row" id="descToggleRow">
+            <span id="descToggleLabel">全て表示</span>
+            <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </div>
+        </div>
+        <% } %>
+
+      <div class="comments-section">
+        <div class="comments-header">
+          <div class="section-title">コメント</div>
+          <button class="collapse-btn" id="collapseCommentsBtn" onclick="toggleComments()">
+            <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>
+            閉じる
+          </button>
+        </div>
+        <div id="commentsBody">
+          <div id="commentsList"><p style="color:#aaa;font-size:15px">コメントを取得中...</p></div>
+          <div id="commentError"></div>
+          <button id="retryBtn" onclick="fetchComments()">再取得</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="side-col">
+      <div class="side-heading">
+        <span>関連動画</span>
+        <div class="view-switch" id="relatedViewSwitch" style="display:none">
+          <button class="view-switch-btn active" id="vsListBtn" title="リスト" onclick="setRelatedView('list')">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2.5" rx="1"/><rect x="3" y="11" width="18" height="2.5" rx="1"/><rect x="3" y="17" width="18" height="2.5" rx="1"/></svg>
+          </button>
+          <button class="view-switch-btn" id="vsGridBtn" title="グリッド" onclick="setRelatedView('grid')">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="related-grid">
+        <% const filtered = (videoInfo.relatedVideos || []).filter(v => v && v.videoId && v.title); %>
+        <% filtered.forEach(v => { %>
+          <a href="/wkt/watch/<%= v.videoId %>" class="related-card">
+            <div class="related-thumb">
+              <img loading="lazy" src="<%= v.thumbnail %>" alt="<%= v.title %>">
+              <% if (v.badgeText) { %><span class="related-dur"><%= v.badgeText %></span><% } %>
+            </div>
+            <div class="related-info">
+              <div class="related-title"><%= v.title %></div>
+              <div class="related-ch"><%= v.channelName %></div>
+              <div class="related-meta"><%= v.viewCountText %><% if (v.publishedText) { %> · <%= v.publishedText %><% } %></div>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="controlPanel">
+  <div class="cp-header">
+    <span class="cp-title">コントロール</span>
+    <button class="cp-close" onclick="document.getElementById('controlPanel').classList.remove('open')">×</button>
+  </div>
+  <div class="cp-tabs">
+    <button class="cp-tab active" onclick="switchCpTab(0)">操作</button>
+    <% if (videotype === 'video') { %><button class="cp-tab" onclick="switchCpTab(1)">画質</button><% } %>
+    <button class="cp-tab" onclick="switchCpTab(<%= videotype === 'video' ? 2 : 1 %>)">再生方法</button>
+  </div>
+  <div class="cp-slide-wrap">
+    <div class="cp-slide-track" id="cpSlideTrack">
+
+      <div class="cp-slide-page">
+        <div class="cp-card">
+          <div class="cp-card-title">再生</div>
+          <button class="cp-btn" onclick="reloadVideo()">
+            <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>再読み込み
+          </button>
+          <% if (videotype === 'video') { %>
+          <div class="cp-toggle-row">
+            <span>ループ再生</span>
+            <label class="toggle-switch"><input type="checkbox" id="loopToggle"><span class="slider"></span></label>
+          </div>
+          <% if (src.highstreamUrl) { %>
+          <div class="cp-toggle-row">
+            <span>高画質化</span>
+            <label class="toggle-switch"><input type="checkbox" id="hdToggle"><span class="slider"></span></label>
+          </div>
+          <% } %>
+          <% } %>
+        </div>
+      </div>
+
+
+        <% if (videotype === 'video') { %>
+          <div class="cp-slide-page">
+            <% if (src.streamUrls && src.streamUrls.length > 0) { %>
+              <div class="cp-card">
+                <div class="cp-card-title">画質を選択</div>
+
+                <select id="qualitySelect" class="cp-select" style="width:100%;padding:10px 12px;border-radius:10px;background:#3f3f3f;color:#fff;border:none;font-size:15px;margin-bottom:10px">
+                  <% src.streamUrls.forEach(s => { %>
+                    <option value="<%= s.url %>" data-resolution="<%= s.resolution %>">
+                      <%= s.resolution %>
+                    </option>
+                  <% }); %>
+                </select>
+
+                <button class="cp-btn" id="applyQuality">
+                  <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                  この画質で再生
+                </button>
+
+                <button class="cp-btn" id="resetQuality">
+                  <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                  デフォルトにリセット
+                </button>
+              </div>
+            <% } else { %>
+              <p style="color:#aaa;font-size:15px;padding:8px 0">他の画質は見つかりませんでした</p>
+            <% } %>
+          </div>
+        <% } %>
+
+      <div class="cp-slide-page">
+        <label class="cp-mode-card" id="modeNormal" onclick="selectMode('normal')">
+          <input type="radio" name="playbackMode" value="normal">
+          <div><div class="cp-mode-title">通常</div><div class="cp-mode-desc">ストリームURLで再生します。ほとんどの環境で動作します。</div></div>
+        </label>
+        <label class="cp-mode-card" id="modeEdu" onclick="selectMode('edu')">
+          <input type="radio" name="playbackMode" value="edu">
+          <div><div class="cp-mode-title">education</div><div class="cp-mode-desc">YouTube Educationを埋め込んで再生します。</div>
+          <a href="/wkt/opu/umekomi?id=<%= videoId %>&type=edu" target="_blank" class="cp-mode-link">再生できるか確認 →</a></div>
+        </label>
+        <label class="cp-mode-card" id="modeNocookie" onclick="selectMode('nocookie')">
+          <input type="radio" name="playbackMode" value="nocookie">
+          <div><div class="cp-mode-title">nocookie</div><div class="cp-mode-desc">YouTube nocookieを埋め込んで再生します。</div>
+          <a href="/wkt/opu/umekomi?id=<%= videoId %>&type=nocookie" target="_blank" class="cp-mode-link">再生できるか確認 →</a></div>
+        </label>
+        <button class="cp-save-btn" id="saveSettings">💾 設定を保存してリロード</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="plModal" style="display:none">
+  <div class="pl-modal-overlay" onclick="if(event.target===this)closePlModal()">
+    <div class="pl-modal">
+      <div class="pl-modal-title">プレイリストに追加</div>
+      <div class="pl-new-row">
+        <input type="text" id="plNewName" class="pl-new-input" placeholder="新規プレイリスト名..." maxlength="50">
+        <button class="pl-new-btn" onclick="createAndAddPlaylist()">作成して追加</button>
+      </div>
+      <div class="pl-list-label">プレイリスト一覧</div>
+      <div class="pl-list" id="plModalList"></div>
+      <button class="pl-modal-close" onclick="closePlModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const videoId    = "<%= videoId %>";
+  const channelId  = "<%= videoInfo.channelId %>";
+  const channelName = "<%= videoInfo.channelName.replace(/\\/g,'\\\\').replace(/'/g,"\\'") %>";
+  const channelIcon = "<%= videoInfo.channelIcon %>";
+  const videoTitle  = "<%= videoInfo.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'") %>";
+  const durationraw  = "<%= videoInfo.duration %>";
+  const duration = !durationraw.includes(":") 
+  ? Math.floor(durationraw / 60) + ":" + ("0" + (durationraw % 60)).slice(-2) 
+  : durationraw;
+  const videoThumb  = "/wkt/back/vi/" + videoId + "/mqdefault.jpg";
+  const viewCount = "<%= videoInfo.viewCount %>";
+  const published = "<%= videoInfo.uploadDate %>";
+  const videotype   = "<%= videotype %>";
+
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const pi = document.getElementById('page-inner');
+    sb.classList.toggle('open');
+    if (window.innerWidth > 1024) pi.style.marginLeft = sb.classList.contains('open') ? '240px' : '0';
+  }
+
+  function applyRelatedLayout(isBottom) {
+    const pi = document.getElementById('page-inner');
+    const label = document.getElementById('layoutLabel');
+    const sw = document.getElementById('relatedViewSwitch');
+    const currentViewMode = localStorage.getItem('relatedViewMode') || 'list';
+    if (isBottom) {
+      pi.classList.add('related-bottom');
+      if (label) label.textContent = '関連動画を横に';
+    } else {
+      pi.classList.remove('related-bottom');
+      if (label) label.textContent = '関連動画を下に';
+    }
+    if (sw) sw.style.display = 'flex';
+    applyRelatedView(currentViewMode);
+  }
+  function toggleRelatedLayout() {
+    const pi = document.getElementById('page-inner');
+    const isNowBottom = !pi.classList.contains('related-bottom');
+    localStorage.setItem('relatedLayout', isNowBottom ? 'bottom' : 'side');
+    applyRelatedLayout(isNowBottom);
+  }
+  function initRelatedLayout() {
+    const saved = localStorage.getItem('relatedLayout');
+    const isPortrait = window.matchMedia("(max-width: 1000px)").matches || (window.innerHeight > window.innerWidth);
+    if (isPortrait) {
+      applyRelatedLayout(true);
+    } else {
+      applyRelatedLayout(saved !== null ? saved === 'bottom' : false);
+    }
+  }
+  function applyRelatedView(mode) {
+    const grid = document.getElementById('related-grid');
+    const lBtn = document.getElementById('vsListBtn');
+    const gBtn = document.getElementById('vsGridBtn');
+    if (!grid || !lBtn || !gBtn) return;
+    const isGrid = mode === 'grid';
+    grid.classList.toggle('grid-view', isGrid);
+    gBtn.classList.toggle('active', isGrid);
+    lBtn.classList.toggle('active', !isGrid);
+  }
+  function setRelatedView(mode) {
+    localStorage.setItem('relatedViewMode', mode);
+    applyRelatedView(mode);
+  }
+  window.addEventListener('resize', initRelatedLayout);
+
+  let descExpanded = false;
+  function toggleDesc() {
+    descExpanded = !descExpanded;
+    document.getElementById('descPreview').style.display = descExpanded ? 'none' : '';
+    document.getElementById('descFull').classList.toggle('show', descExpanded);
+    document.getElementById('descToggleLabel').textContent = descExpanded ? '閉じる' : '全て表示';
+    document.getElementById('descToggleRow').classList.toggle('open', descExpanded);
+  }
+
+  let commentsOpen = true;
+  function toggleComments() {
+    commentsOpen = !commentsOpen;
+    const body = document.getElementById('commentsBody');
+    const btn  = document.getElementById('collapseCommentsBtn');
+    body.style.display = commentsOpen ? '' : 'none';
+    btn.classList.toggle('collapsed', !commentsOpen);
+    const path = btn.querySelector('svg path');
+    path.setAttribute('d', commentsOpen ? 'M7 14l5-5 5 5z' : 'M7 10l5 5 5-5z');
+    btn.lastChild.textContent = commentsOpen ? ' 閉じる' : ' 開く';
+  }
+
+  function switchCpTab(idx) {
+    document.querySelectorAll('.cp-tab').forEach((t,i) => t.classList.toggle('active', i === idx));
+    document.getElementById('cpSlideTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
+  }
+
+  function selectMode(mode) {
+    document.querySelectorAll('.cp-mode-card').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1));
+    if (card) card.classList.add('selected');
+    const r = document.querySelector('input[name="playbackMode"][value="' + mode + '"]');
+    if (r) r.checked = true;
+  }
+
+  async function fetchComments() {
+    const list = document.getElementById('commentsList');
+    const err  = document.getElementById('commentError');
+    const retry = document.getElementById('retryBtn');
+    list.innerHTML = '<p style="color:#aaa;font-size:15px">コメントを取得中...</p>';
+    err.style.display = 'none'; retry.style.display = 'none';
+    try {
+      const res = await fetch('/api/yt/comment?id=' + videoId);
+      if (!res.ok) throw new Error('サーバーエラー ' + res.status);
+      const data = await res.json();
+      if (!data.data || !data.data.length) { list.innerHTML = '<p style="color:#aaa;font-size:15px">コメントはありません</p>'; return; }
+      list.innerHTML = data.data.map(c => `
+        <div class="comment-item">
+          <div class="comment-icon"><img loading="lazy" src="${c.authorIcon}" alt=""></div>
+          <div>
+            <div class="comment-author"><a href="/wkt/c/${c.authorId}">${c.authorName}</a></div>
+            <div class="comment-text">${escHtml(c.text||'').replace(/\n/g,'<br>')}</div>
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      list.innerHTML = ''; err.textContent = 'コメントの取得に失敗しました: ' + e.message;
+      err.style.display = 'block'; retry.style.display = 'inline-block';
+      showToast('コメントの取得に失敗しました', true);
+    }
+  }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  fetchComments();
+
+  function getPlaylists() { return JSON.parse(localStorage.getItem('wkt_playlists') || '[]'); }
+  function savePlaylists(pls) { localStorage.setItem('wkt_playlists', JSON.stringify(pls)); }
+  function genPlId() { return 'pl_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+  function openPlaylistModal() {
+    renderPlModalList();
+    document.getElementById('plNewName').value = '';
+    document.getElementById('plModal').style.display = 'block';
+  }
+  function closePlModal() { document.getElementById('plModal').style.display = 'none'; }
+
+  function renderPlModalList() {
+    const container = document.getElementById('plModalList');
+    if (!container) return;
+
+    const pls = getPlaylists();
+    if (pls.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:14px;">プレイリストがまだありません</div>';
+      return;
+    }
+
+    container.innerHTML = pls.map(pl => {
+      const isAdded = pl.videos && pl.videos.some(v => v.videoId === videoId);
+      const hasVideos = pl.videos && pl.videos.length > 0;
+      const thumbHtml = hasVideos 
+        ? `<img src="${pl.videos[0].thumbnail}" loading="lazy" onerror="this.src='/wkt/back/vi/default/mqdefault.jpg'">` 
+        : `<div class="pl-item-empty">EMPTY</div>`;
+
+      return `
+        <div class="pl-list-item ${isAdded ? 'added' : ''}" onclick="toggleVideoInPlaylist('${pl.id}')">
+          <div class="pl-item-thumb">
+            ${thumbHtml}
+          </div>
+          <div class="pl-item-info">
+            <div class="pl-item-name">${escHtml(pl.name)}</div>
+            <div class="pl-item-meta">${pl.videos.length} 本の動画</div>
+          </div>
+          <svg class="pl-list-item-check" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#4caf50"/>
+          </svg>
+        </div>`;
+    }).join('');
+  }
+  
+  function createAndAddPlaylist() {
+    const name = document.getElementById('plNewName').value.trim();
+    if (!name) { showToast('プレイリスト名を入力してください', true); return; }
+    const pls = getPlaylists();
+    const newPl = { id: genPlId(), name, videos: [{ videoId, title: videoTitle, channelName, thumbnail: videoThumb }] };
+    pls.unshift(newPl);
+    savePlaylists(pls);
+    document.getElementById('plNewName').value = '';
+    renderPlModalList();
+    showToast('「' + name + '」を作成して追加しました');
+  }
+
+  function toggleVideoInPlaylist(plId) {
+    const pls = getPlaylists();
+    const pl = pls.find(p => p.id === plId);
+    if (!pl) return;
+    const idx = pl.videos.findIndex(v => v.videoId === videoId);
+    if (idx !== -1) {
+      pl.videos.splice(idx, 1);
+      showToast('「' + pl.name + '」から削除しました');
+    } else {
+      pl.videos.push({ videoId, title: videoTitle, channelName, thumbnail: videoThumb });
+      showToast('「' + pl.name + '」に追加しました');
+    }
+    savePlaylists(pls);
+    renderPlModalList();
+  }
+
+  function initPlaylistMode() {
+    const params = new URLSearchParams(window.location.search);
+    const plId = params.get('playlist');
+    if (!plId) return;
+    const pls = getPlaylists();
+    const pl = pls.find(p => p.id === plId);
+    if (!pl || !pl.videos.length) return;
+
+    const currentIdx = pl.videos.findIndex(v => v.videoId === videoId);
+    const sec = document.getElementById('playlistSection');
+    sec.style.display = 'block';
+            sec.innerHTML = `
+              <div class="playlist-section">
+                <div class="playlist-section-header">
+                  <div class="playlist-section-title">プレイリスト：${escHtml(pl.name)}</div>
+                  <div class="playlist-section-count">${currentIdx + 1} / ${pl.videos.length}</div>
+                </div>
+                <div class="playlist-track-list" id="plTrackList">
+                  ${pl.videos.map((v, i) => {
+                    const isCurrent = v.videoId === videoId;
+                    return `<a href="/wkt/watch/${v.videoId}?playlist=${encodeURIComponent(plId)}"
+                      class="playlist-track-item${isCurrent ? ' playing' : ''}"
+                      id="plTrack_${i}">
+                      <span class="playlist-track-num">${isCurrent ? '▶' : i + 1}</span>
+                      <div class="playlist-track-thumb"><img loading="lazy" src="${v.thumbnail}" alt=""></div>
+                      <div class="playlist-track-info">
+                        <div class="playlist-track-title">${escHtml(v.title)}</div>
+                        <div class="playlist-track-ch">${escHtml(v.channelName)}</div>
+                      </div>
+                    </a>`;
+                  }).join('')}
+                </div>
+              </div>`;
+  }
+
+  function getFavs() { return JSON.parse(localStorage.getItem('wakametubefavorites') || '[]'); }
+  function toggleFav() {
+    let favs = getFavs();
+    const btn = document.getElementById('favBtn');
+    const idx = favs.findIndex(f => f.videoId === videoId);
+    if (idx !== -1) { favs.splice(idx, 1); btn.classList.remove('fav-active'); showToast(videoTitle + ' のお気に入りを解除しました'); }
+    else { favs.push({ videoId, channelId, channelName, videoTitle, channelIcon, duration, viewCount , published  }); btn.classList.add('fav-active'); showToast(videoTitle + ' をお気に入りに追加しました'); }
+    localStorage.setItem('wakametubefavorites', JSON.stringify(favs));
+  }
+
+  function toggleSubscribe(id, name, icon) {
+    const btn = document.getElementById('subBtn');
+    let subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const idx = subs.findIndex(s => s.id === id);
+    if (idx !== -1) { subs.splice(idx, 1); btn.textContent = '登録'; btn.classList.remove('subscribed'); showToast(name + ' の登録を解除しました'); }
+    else { subs.push({ id, name, icon }); btn.textContent = '登録済み'; btn.classList.add('subscribed'); showToast(name + ' に登録しました'); }
+    localStorage.setItem('subscriptions', JSON.stringify(subs));
+  }
+
+  function saveHistory() {
+    let h = JSON.parse(localStorage.getItem('wakametubehistory') || '[]');
+    h = h.filter(x => x.videoId !== videoId);
+    if (h.length >= 100) h.shift();
+    h.push({ videoId, channelId, channelName, videoTitle, channelIcon, duration, viewCount , published });
+    localStorage.setItem('wakametubehistory', JSON.stringify(h));
+  }
+
+    function saveHashtag(description) {
+        if (!description) return;
+
+        const tagRegex = /#([^\s　!@#$%^&*()<>?.+=\[\]{}|\\/-]+)/g;
+        const foundTags = [];
+        let match;
+        while ((match = tagRegex.exec(description)) !== null) {
+            foundTags.push(match[1]);
+        }
+
+        if (foundTags.length === 0) return;
+
+        let tagList = [];
+        try {
+            const saved = localStorage.getItem('wkt_tag');
+            tagList = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            tagList = [];
+        }
+
+        foundTags.forEach(tag => {
+            const existingTag = tagList.find(item => item.tag === tag);
+            if (existingTag) {
+                existingTag.num += 1;
+            } else {
+                tagList.push({ tag: tag, num: 1 });
+            }
+        });
+
+        tagList.sort((a, b) => b.num - a.num);
+        localStorage.setItem('wkt_tag', JSON.stringify(tagList.slice(0, 100)));
+    }
+
+    saveHashtag(<%- JSON.stringify(videoInfo.description) %>);
+
+  document.getElementById('saveSettings').addEventListener('click', function () {
+    const mode = document.querySelector('input[name="playbackMode"]:checked')?.value;
+    if (!mode) return;
+    document.cookie = 'playbackMode=' + mode + '; path=/; max-age=31536000';
+    document.getElementById('controlPanel').classList.remove('open');
+    showToast('再生方法を ' + mode + ' に変更します');
+    setTimeout(() => { window.location.href = '/wkt/redirect/mode/' + videoId + '?mode=' + mode; }, 800);
+  });
+
+  $(function () {
+    $('#searchbox').autocomplete({
+      source: function (req, cb) {
+        const term = req.term.trim();
+        if (term.length > 0) { $.ajax({ url: '/wkt/back/suggest', data: { keyword: term }, success: function (d) { cb(d.length > 0 ? d : getHistory()); } }); }
+        else cb(getHistory());
+      },
+      delay: 1, minLength: 0,
+      select: function (e, ui) { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+    });
+    function getHistory() { return JSON.parse(localStorage.getItem('searchHistory') || '[]'); }
+    $('#searchbox').on('focus', function () { $(this).autocomplete('search', this.value || ''); });
+  });
+
+  function showToast(text, isError) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.innerHTML = '<span>' + text + '</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>';
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(20px)'; setTimeout(() => t.remove(), 300); }, 3500);
+  }
+  function showMessage(text) { showToast(text); }
+  function showerrorMessage(text) { showToast(text, true); }
+
+  function showTutorial() {
+    const ov = document.createElement('div'); ov.className = 'tut-overlay';
+    ov.innerHTML = `<div class="tut-card">
+      <div class="tut-title">再生方法を選択してください</div>
+      <div class="tut-sub">動画が再生できる方法を選んでください。後からコントロールパネルでいつでも変更できます。埋め込みで見れるなら埋め込みで見た方が良いですよ！</div>
+      <div class="tut-options">
+        <div class="tut-option">
+          <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          <div class="tut-option-body">
+            <div class="tut-option-title">nocookie</div>
+            <div class="tut-option-desc">YouTube nocookieを埋め込み再生。</div>
+            <button class="tut-use-btn" onclick="setModeFromTutorial('nocookie')">これを使う</button>
+          </div>
+        </div>
+        <div class="tut-option">
+          <iframe id="tutEduFrame" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          <div class="tut-option-body">
+            <div class="tut-option-title">education</div>
+            <div class="tut-option-desc">YouTube Educationを埋め込み再生。</div>
+            <button class="tut-use-btn" onclick="setModeFromTutorial('edu')">これを使う</button>
+          </div>
+        </div>
+        <div class="tut-option">
+          <div class="tut-placeholder">
+    <video controls preload="auto" playsinline 
+           poster="/wkt/back/vi/${videoId}/maxresdefault.jpg"
+           style="width:100%; height:100%; object-fit:contain;">
+        <source id="videoSrc" src="<%- src.stream_url %>" type="video/mp4">
+    </video>
+</div>
+          <div class="tut-option-body">
+            <div class="tut-option-title">通常</div>
+            <div class="tut-option-desc">ストリームURLで再生。</div>
+            <button class="tut-use-btn" onclick="setModeFromTutorial('normal')">これを使う</button>
+          </div>
+        </div>
+      </div>
+      <button class="tut-skip" onclick="setModeFromTutorial('normal',true)">スキップして通常再生を使う</button>
+    </div>`;
+    document.body.appendChild(ov);
+      fetch('/api/yt/ytedu')
+      .then(r => r.json())
+      .then(p => {
+        const f = document.getElementById('tutEduFrame');
+        if (f && p.params) {
+          f.src = 'https://www.youtubeeducation.com/embed/' + videoId + p.params;
+        }
+      }).catch(() => {});
+    window._tutOverlay = ov;
+  }
+  function setModeFromTutorial(mode, skip) {
+    localStorage.setItem('tutorialCompleted', 'ok');
+    if (window._tutOverlay) window._tutOverlay.remove();
+    document.cookie = 'playbackMode=' + mode + '; path=/; max-age=31536000';
+    if (mode === 'normal' || skip) showToast('再生方法を通常に設定しました');
+    else window.location.href = (mode === 'nocookie' ? '/wkt/watch/' : '/wkt/watch/') + videoId + '?tu=true';
+  }
+
+  window.addEventListener('load', function () {
+    initRelatedLayout();
+    initPlaylistMode(); 
+    if (getFavs().some(f => f.videoId === videoId)) document.getElementById('favBtn').classList.add('fav-active');
+    const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const subBtn = document.getElementById('subBtn');
+    if (subs.some(s => s.id === channelId)) { subBtn.textContent = '登録済み'; subBtn.classList.add('subscribed'); }
+    const cur = document.cookie.split('; ').find(r => r.startsWith('playbackMode='))?.split('=')[1] || 'normal';
+    selectMode(cur);
+    saveHistory();
+    if (new URLSearchParams(window.location.search).get('tu') === 'true') showToast('再生方法を変更しました');
+    const done = localStorage.getItem('tutorialCompleted');
+    if (!done) showTutorial();
+    else if (done === 'true') { showToast('ヒント: コントロールボタンから画質・再生方法を変更できます'); localStorage.setItem('tutorialCompleted', 'ok'); }
+  });
+
+  <% if (videotype === 'video') { %>
+  const videoEl = document.getElementById('video');
+  const audioEl = document.getElementById('audio');
+  const videoSrcEl = document.getElementById('videoSrc');
+  const loadingEl = document.getElementById('loadingIndicator');
+  const errBtn = document.getElementById('erroreloadBtn');
+
+  showToast('💡ヒント: 右上の設定から画質を変更できますよ！');
+
+  videoEl.addEventListener('waiting', () => loadingEl.style.display = 'block');
+  videoEl.addEventListener('playing', () => loadingEl.style.display = 'none');
+  videoEl.addEventListener('canplay', () => { loadingEl.style.display = 'none'; errBtn.style.display = 'none'; readyZerodone = false; });
+  videoEl.addEventListener('error', () => {
+    showerrorMessage('動画の読み込みに失敗しました。');
+    const t = videoEl.currentTime; videoEl.load();
+    videoEl.addEventListener('loadedmetadata', () => { videoEl.currentTime = t; videoEl.play(); }, { once: true });
+  });
+  let readyZeroStart = null, readyZerodone = false;
+  setInterval(() => {
+    if (videoEl.readyState === 0 && !readyZerodone) {
+      if (!readyZeroStart) readyZeroStart = Date.now();
+      else if (Date.now() - readyZeroStart > 3000) { showerrorMessage('動画読み込みエラー。再読み込み中です...'); errBtn.style.display = 'block'; videoEl.load(); readyZerodone = true; readyZeroStart = null; }
+    } else { readyZeroStart = null; }
+  }, 1000);
+  function reloadVideo() { errBtn.style.display = 'none'; readyZerodone = false; videoEl.load(); videoEl.play().catch(() => {}); }
+
+  const loopToggle = document.getElementById('loopToggle');
+  loopToggle.checked = localStorage.getItem('videoLoop') === 'true';
+  videoEl.loop = loopToggle.checked;
+  loopToggle.addEventListener('change', function () { videoEl.loop = this.checked; localStorage.setItem('videoLoop', this.checked); });
+
+  document.getElementById('applyQuality')?.addEventListener('click', function () {
+    const sel = document.getElementById('qualitySelect');
+    videoSrcEl.type = 'video/webm'; videoSrcEl.src = sel.value;
+    audioEl.src = '<%- src.stream_url %>';
+    document.getElementById('controlPanel').classList.remove('open');
+    videoEl.load(); audioEl.load();
+    videoEl.addEventListener('loadedmetadata', () => videoEl.play().catch(() => {}), { once: true });
+    syncAudio();
+  });
+  document.getElementById('resetQuality')?.addEventListener('click', function () {
+    videoSrcEl.type = 'video/mp4'; videoSrcEl.src = '<%- src.stream_url %>';
+    audioEl.src = ''; audioEl.pause();
+    document.getElementById('controlPanel').classList.remove('open');
+    videoEl.load();
+  });
+
+  <% if (src.highstreamUrl) { %>
+  document.getElementById('hdToggle')?.addEventListener('change', function () {
+    if (this.checked) {
+      videoSrcEl.type = 'video/webm'; videoSrcEl.src = '<%- src.highstreamUrl %>';
+      audioEl.src = '<%- src.stream_url %>'; videoEl.load(); audioEl.load();
+      videoEl.addEventListener('loadedmetadata', () => videoEl.play().catch(() => {}), { once: true });
+      syncAudio();
+    } else {
+      videoSrcEl.type = 'video/mp4'; videoSrcEl.src = '<%- src.stream_url %>';
+      audioEl.pause(); audioEl.src = ''; videoEl.load();
+    }
+  });
+  <% } %>
+
+  function syncAudio() {
+    videoEl.addEventListener('play', () => audioEl.play().catch(() => {}));
+    videoEl.addEventListener('pause', () => { audioEl.pause(); audioEl.currentTime = videoEl.currentTime; });
+    videoEl.addEventListener('ended', () => { audioEl.pause(); audioEl.currentTime = 0; });
+    videoEl.addEventListener('seeked', () => { audioEl.pause(); audioEl.currentTime = videoEl.currentTime; audioEl.play().catch(() => {}); videoEl.play().catch(() => {}); });
+    videoEl.addEventListener('timeupdate', () => { if (Math.abs(videoEl.currentTime - audioEl.currentTime) > 0.4) audioEl.currentTime = videoEl.currentTime + 0.1; });
+  }
+
+  let wakeLock = null;
+  async function reqWakeLock() { try { if (!wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch(e) {} }
+  videoEl.addEventListener('play', reqWakeLock);
+  videoEl.addEventListener('pause', () => { if (wakeLock) wakeLock.release().then(() => { wakeLock = null; }); });
+  videoEl.addEventListener('ended', () => { if (wakeLock) wakeLock.release().then(() => { wakeLock = null; }); });
+
+  document.addEventListener('keydown', function (e) {
+    if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+    if (e.code === 'Space') { e.preventDefault(); videoEl.paused ? videoEl.play() : videoEl.pause(); }
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); const fn = videoEl.requestFullscreen || videoEl.webkitRequestFullscreen; if (fn) fn.call(videoEl); }
+    if (e.key === 'ArrowRight') videoEl.currentTime += 10;
+    if (e.key === 'ArrowLeft')  videoEl.currentTime -= 10;
+  });
+  <% } else { %>
+  function reloadVideo() {}
+  <% } %>
+</script>
+</body>
+</html>

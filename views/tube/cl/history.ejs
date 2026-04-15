@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="format-detection" content="telephone=no">
+  <title>履歴</title>
+  <link rel="stylesheet" href="/css/page.css">
+  <script src="/js/tailwindcss.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/js/tube.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Roboto", sans-serif; background: #0f0f0f; color: #fff; overflow-x: hidden; font-size: 16px; }
+
+    #topbar { background:#0f0f0f; border-bottom:1px solid #272727; padding:0 16px; display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:1000; height:58px; }
+    .logo-wrap { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; flex-shrink:0; }
+    .logo-icon { width:30px; height:22px; background:#f00; border-radius:4px; position:relative; }
+    .logo-icon::after { content:""; position:absolute; border-left:8px solid #fff; border-top:5px solid transparent; border-bottom:5px solid transparent; top:6px; left:11px; }
+    .logo-text { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+    .icon-btn { background:none; border:none; cursor:pointer; color:#fff; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-btn:hover { background:#272727; }
+    .search-wrap { flex:1; max-width:520px; display:flex; align-items:center; margin:0 6px; }
+    #searchbox { flex:1; padding:0 16px; height:40px; border:1px solid #303030; border-right:none; border-radius:40px 0 0 40px; font-size:16px; background:#121212; color:#fff; outline:none; }
+    #searchbox:focus { border-color:#1a73e8; }
+    .search-submit { border:1px solid #303030; border-left:none; border-radius:0 40px 40px 0; background:#222; width:54px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .search-submit:hover { background:#333; }
+    .search-submit svg { width:20px; height:20px; fill:#fff; }
+
+    #sidebar {
+      width: 0;
+      overflow: hidden;
+      background: #0f0f0f;
+      border-right: 1px solid #272727;
+      transition: width 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: fixed;
+      top: 52px;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+    }
+    #sidebar.open { width: 220px; padding: 8px 0; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 20px;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .sidebar-item:hover, .sidebar-item.active { background: #272727; color: #fff; }
+    .sidebar-item.active { font-weight: 600; }
+    .sidebar-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; display: block; }
+    .sidebar-divider { height: 1px; background: #272727; margin: 6px 12px; flex-shrink: 0; }
+
+    /* ── Layout ── */
+    .page-wrap { padding-top:58px; min-height:100vh; }
+    #main-content { margin-left:0; transition:margin-left 0.2s ease; max-width:1100px; padding:24px 24px 60px; }
+
+    .page-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+    .page-title { font-size:1.5em; font-weight:700; display:flex; align-items:center; gap:10px; }
+    .page-title svg { width:26px; height:26px; fill:#fff; flex-shrink:0; }
+
+    .controls-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+
+    .hist-tabs { display:flex; background:#1a1a1a; border-radius:20px; padding:3px; gap:2px; }
+    .hist-tab { padding:7px 18px; border-radius:16px; border:none; background:none; color:#aaa; font-size:14px; cursor:pointer; transition:background 0.15s, color 0.15s; white-space:nowrap; }
+    .hist-tab.active { background:#272727; color:#fff; font-weight:600; }
+
+    .view-switch { display:flex; background:#1a1a1a; border-radius:16px; padding:3px; gap:2px; }
+    .view-switch-btn { background:none; border:none; width:34px; height:30px; border-radius:14px; cursor:pointer; color:#aaa; display:flex; align-items:center; justify-content:center; }
+    .view-switch-btn.active { background:#272727; color:#fff; }
+    .view-switch-btn svg { width:17px; height:17px; fill:currentColor; }
+
+    #videoHistory { display:flex; flex-direction:column; gap:2px; }
+
+    .history-item { display:flex; align-items:center; gap:14px; padding:10px 12px; border-radius:10px; transition:background 0.1s; }
+    .history-item:hover { background:#1a1a1a; }
+    .history-item:hover .del-btn { opacity:1; }
+
+    .hi-thumb { flex-shrink:0; width:160px; aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#1a1a1a; }
+    .hi-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .hi-info { flex:1; min-width:0; }
+    .hi-title { font-size:15px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:#fff; text-decoration:none; margin-bottom:5px; display:block; }
+    .hi-title:hover { color:#3ea6ff; }
+    .hi-channel { font-size:13px; color:#aaa; text-decoration:none; }
+    .hi-channel:hover { color:#fff; }
+
+    .del-btn { flex-shrink:0; opacity:0; background:none; border:none; cursor:pointer; color:#aaa; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:opacity 0.15s, background 0.15s, color 0.15s; }
+    .del-btn:hover { background:#272727; color:#f87171; }
+    .del-btn svg { width:20px; height:20px; fill:currentColor; }
+    @media (hover:none) { .del-btn { opacity:1; } }
+
+    #videoHistory.grid-view { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
+    #videoHistory.grid-view .history-item { flex-direction:column; align-items:flex-start; padding:0; border-radius:10px; overflow:hidden; background:none; }
+    #videoHistory.grid-view .history-item:hover { background:none; }
+    #videoHistory.grid-view .history-item:hover .del-btn { opacity:1; }
+    #videoHistory.grid-view .hi-thumb { width:100%; border-radius:8px; position:relative; }
+    #videoHistory.grid-view .hi-info { padding:8px 2px 0; width:100%; }
+    #videoHistory.grid-view .hi-title { font-size:14px; -webkit-line-clamp:2; margin-bottom:4px; }
+    #videoHistory.grid-view .history-item { position:relative; }
+    #videoHistory.grid-view .del-btn { position:absolute; top:4px; right:4px; opacity:0; background:rgba(0,0,0,.7); color:#fff; padding:5px; border-radius:50%; }
+    #videoHistory.grid-view .history-item:hover .del-btn { opacity:1; }
+
+    #searchHistory { display:flex; flex-direction:column; }
+    .search-hist-item { display:flex; align-items:center; gap:12px; padding:12px 12px; border-radius:10px; transition:background 0.1s; }
+    .search-hist-item:hover { background:#1a1a1a; }
+    .search-hist-item:hover .del-btn { opacity:1; }
+    .sh-icon { width:36px; height:36px; border-radius:50%; background:#1f1f1f; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .sh-icon svg { width:17px; height:17px; fill:#aaa; }
+    .sh-query { flex:1; min-width:0; }
+    .sh-query a { font-size:15px; color:#fff; text-decoration:none; display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .sh-query a:hover { color:#3ea6ff; }
+
+    .empty-state { text-align:center; padding:80px 20px; color:#555; }
+    .empty-state svg { width:52px; height:52px; fill:#333; margin:0 auto 14px; display:block; }
+    .empty-state p { font-size:15px; margin-bottom:6px; color:#666; }
+    .empty-state small { font-size:13px; color:#444; }
+
+
+    .ui-autocomplete { background:#212121 !important; border:none !important; border-radius:0 0 12px 12px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; z-index:10001 !important; padding:8px 0 !important; }
+    .ui-menu-item-wrapper { color:#eee !important; padding:11px 18px !important; font-size:15px !important; border:none !important; }
+    .ui-state-active { background:#3f3f3f !important; margin:0 !important; border:none !important; }
+    .ui-helper-hidden-accessible { display:none; }
+
+    @media (max-width:600px) {
+      .hi-thumb { width:120px; }
+      #main-content { padding:18px 14px 40px; }
+      #videoHistory.grid-view { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <button class="icon-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>
+  </button>
+  <a href="/wkt" class="logo-wrap">
+    <div class="logo-icon"></div>
+  </a>
+  <form action="/wkt/s" method="get" class="search-wrap" id="searchForm">
+    <input type="text" name="q" id="searchbox" placeholder="検索" autocomplete="off">
+    <button type="submit" class="search-submit">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+</header>
+
+  <div id="sidebar">
+    <a href="/wkt" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      ホーム
+    </a>
+    <a href="/wkt/trend" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      トレンド
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/subscriptions" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+      登録チャンネル
+    </a>
+    <a href="/wkt/cl/history" class="sidebar-item active">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      履歴
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/cl/favorites" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+      お気に入り
+    </a>
+    <a href="/wkt/cl/playlists" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+      プレイリスト
+    </a>
+    <div class="sidebar-divider"></div>
+    <a href="/wkt/settings" class="sidebar-item">
+      <span class="sidebar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg></span>
+      設定
+    </a>
+  </div>
+
+<div class="page-wrap">
+  <div id="main-content">
+
+    <div class="page-title">
+      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      履歴
+    </div>
+
+
+    <div class="controls-row">
+      <div class="hist-tabs">
+        <button class="hist-tab active" id="tabVideo" onclick="switchHistTab('video')">動画</button>
+        <button class="hist-tab" id="tabSearch" onclick="switchHistTab('search')">検索</button>
+      </div>
+      <div class="view-switch" id="viewSwitch">
+        <button class="view-switch-btn active" id="btnList" title="リスト" onclick="setView('list')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2.5" rx="1"/><rect x="3" y="11" width="18" height="2.5" rx="1"/><rect x="3" y="17" width="18" height="2.5" rx="1"/></svg>
+        </button>
+        <button class="view-switch-btn" id="btnGrid" title="グリッド" onclick="setView('grid')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+    
+    <div id="videoHistory"></div>
+
+    <div id="searchHistory" style="display:none"></div>
+
+  </div>
+</div>
+
+<script>
+  function toggleSidebar(forceOpen = null) {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('main-content');
+
+    if (forceOpen === true) sb.classList.add('open');
+    else if (forceOpen === false) sb.classList.remove('open');
+    else sb.classList.toggle('open');
+
+    const isOpen = sb.classList.contains('open');
+
+    if (window.innerWidth > 1024) {
+      mc.style.marginLeft = isOpen ? '240px' : '0';
+    } else {
+      mc.style.marginLeft = '0';
+    }
+    localStorage.setItem('sidebar_expanded', isOpen);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedSidebar = localStorage.getItem('sidebar_expanded');
+    const isLargeScreen = window.innerWidth > 1024;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+      toggleSidebar(false);
+    } else if (savedSidebar !== null) {
+      toggleSidebar(savedSidebar === 'true');
+    } else {
+      if (isLargeScreen) {
+        toggleSidebar(true);
+      } else {
+        toggleSidebar(false);
+      }
+    }
+  });
+
+  let currentTab = 'video';
+  let currentView = 'list';
+
+  function switchHistTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabVideo').classList.toggle('active', tab === 'video');
+    document.getElementById('tabSearch').classList.toggle('active', tab === 'search');
+    document.getElementById('videoHistory').style.display  = tab === 'video'  ? '' : 'none';
+    document.getElementById('searchHistory').style.display = tab === 'search' ? '' : 'none';
+    document.getElementById('viewSwitch').style.display    = tab === 'video'  ? '' : 'none';
+    if (tab === 'search') renderSearchHistory();
+  }
+
+  function setView(v) {
+    currentView = v;
+    const list = document.getElementById('videoHistory');
+    const lBtn = document.getElementById('btnList');
+    const gBtn = document.getElementById('btnGrid');
+    list.classList.toggle('grid-view', v === 'grid');
+    lBtn.classList.toggle('active', v === 'list');
+    gBtn.classList.toggle('active', v === 'grid');
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fadeRemove(el, afterFn) {
+    el.style.transition = 'opacity 0.18s, transform 0.18s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(10px)';
+    setTimeout(() => { el.remove(); if (afterFn) afterFn(); }, 180);
+  }
+
+  function getVideoHistory() {
+    try { return JSON.parse(localStorage.getItem('wakametubehistory') || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveVideoHistory(h) { localStorage.setItem('wakametubehistory', JSON.stringify(h)); }
+
+  function deleteVideoItem(videoId) {
+    let h = getVideoHistory();
+    h = h.filter(v => v.videoId !== videoId);
+    saveVideoHistory(h);
+    const el = document.getElementById('hv_' + videoId);
+    if (el) fadeRemove(el, () => {
+      if (!document.querySelector('#videoHistory .history-item')) renderVideoEmpty();
+    });
+  }
+
+  function renderVideoEmpty() {
+    document.getElementById('videoHistory').innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        <p>動画の視聴履歴がありません</p>
+        <small>動画を再生すると履歴が記録されます</small>
+      </div>`;
+  }
+
+  function renderVideoHistory() {
+    const h = getVideoHistory().slice().reverse();
+    const el = document.getElementById('videoHistory');
+    if (!h.length) { renderVideoEmpty(); return; }
+    el.innerHTML = h.map(v => `
+      <div class="history-item" id="hv_${escHtml(v.videoId)}">
+        <a href="/wkt/watch/${escHtml(v.videoId)}" class="hi-thumb">
+          <img loading="lazy" src="/wkt/back/vi/${escHtml(v.videoId)}/mqdefault.jpg" alt="${escHtml(v.videoTitle)}">
+        </a>
+        <div class="hi-info">
+          <a href="/wkt/watch/${escHtml(v.videoId)}" class="hi-title">${escHtml(v.videoTitle || '（タイトル不明）')}</a>
+          <a href="/wkt/c/${escHtml(v.channelId)}" class="hi-channel">${escHtml(v.channelName || '')}</a>
+        </div>
+        <button class="del-btn" onclick="deleteVideoItem('${escHtml(v.videoId)}')" title="削除">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </div>`).join('');
+  }
+
+  function getSearchHistory() {
+    try { return JSON.parse(localStorage.getItem('searchHistory') || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveSearchHistory(h) { localStorage.setItem('searchHistory', JSON.stringify(h)); }
+
+  function deleteSearchItem(query) {
+    let h = getSearchHistory();
+    h = h.filter(q => q !== query);
+    saveSearchHistory(h);
+    const safeId = 'hs_' + btoa(encodeURIComponent(query)).replace(/[^a-zA-Z0-9]/g,'');
+    const el = document.getElementById(safeId);
+    if (el) fadeRemove(el, () => {
+      if (!document.querySelector('#searchHistory .search-hist-item')) renderSearchEmpty();
+    });
+  }
+
+  function renderSearchEmpty() {
+    document.getElementById('searchHistory').innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <p>検索履歴がありません</p>
+        <small>検索すると履歴が記録されます</small>
+      </div>`;
+  }
+
+  function renderSearchHistory() {
+    const h = getSearchHistory();
+    const el = document.getElementById('searchHistory');
+    if (!h.length) { renderSearchEmpty(); return; }
+    el.innerHTML = h.map(q => {
+      const safeId = 'hs_' + btoa(encodeURIComponent(q)).replace(/[^a-zA-Z0-9]/g,'');
+      const safeQuery = escHtml(q); 
+
+      return `
+        <div class="search-hist-item" id="${safeId}">
+          <div class="sh-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
+          <div class="sh-query">
+            <a href="/wkt/s?q=${encodeURIComponent(q)}">${safeQuery}</a>
+          </div>
+          <button class="del-btn" onclick="deleteSearchItem('${safeQuery.replace(/'/g, "\\'")}')" title="削除">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  $(function () {
+    $('#searchbox').autocomplete({
+      source: function (req, cb) {
+        const term = req.term.trim();
+        if (term.length > 0) {
+          $.ajax({ url: '/wkt/back/suggest', data: { keyword: term },
+            success: function (d) { cb(d.length > 0 ? d : getSearchHistory()); }
+          });
+        } else { cb(getSearchHistory()); }
+      },
+      delay: 1, minLength: 0,
+      select: function (e, ui) { $('#searchbox').val(ui.item.value); $('#searchForm').submit(); }
+    });
+    $('#searchbox').on('focus', function () { $(this).autocomplete('search', this.value || ''); });
+  });
+
+  renderVideoHistory();
+</script>
+</body>
+</html>
